@@ -146,4 +146,15 @@ public class WeaponController : MonoBehaviour
     public int GetMaxAmmo() => currentWeapon != null ? currentWeapon.maxAmmo : 0;
     public int GetReserveAmmo() => currentWeapon != null ? currentWeapon.reserveAmmo : 0;
     public bool IsReloading() => isReloading;
+
+    public void SetCurrentWeapon(WeaponData newWeapon)
+    {
+        currentWeapon = newWeapon;
+        
+        // Reset weapon to full ammo when switching
+        if (currentWeapon != null)
+        {
+            currentWeapon.currentAmmo = currentWeapon.maxAmmo;
+        }
+    }
 }

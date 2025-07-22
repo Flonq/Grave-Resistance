@@ -8,8 +8,10 @@ public class GameUIController : MonoBehaviour
     public TextMeshProUGUI ammoText;
     public Slider healthBar;
     public TextMeshProUGUI scoreText; // YENİ
+    public TextMeshProUGUI weaponIndicator; // YENİ
     public WeaponController weaponController;
     public PlayerHealth playerHealth;
+    public WeaponManager weaponManager; // YENİ
     
     void Start()
     {
@@ -24,6 +26,12 @@ public class GameUIController : MonoBehaviour
         {
             GameManager.Instance.OnScoreChanged += UpdateScoreUI;
             GameManager.Instance.OnKillCountChanged += UpdateScoreUI;
+        }
+        
+        // Subscribe to weapon changes
+        if (weaponManager != null)
+        {
+            weaponManager.OnWeaponChanged += UpdateWeaponUI;
         }
     }
     
@@ -58,6 +66,14 @@ public class GameUIController : MonoBehaviour
         }
     }
     
+    void UpdateWeaponUI(WeaponData weapon, int index)
+    {
+        if (weaponIndicator != null)
+        {
+            weaponIndicator.text = $"{index + 1}. {weapon.weaponName}";
+        }
+    }
+    
     void OnDestroy()
     {
         // Unsubscribe from health events
@@ -71,6 +87,12 @@ public class GameUIController : MonoBehaviour
         {
             GameManager.Instance.OnScoreChanged -= UpdateScoreUI;
             GameManager.Instance.OnKillCountChanged -= UpdateScoreUI;
+        }
+        
+        // Unsubscribe from weapon events
+        if (weaponManager != null)
+        {
+            weaponManager.OnWeaponChanged -= UpdateWeaponUI;
         }
     }
 }

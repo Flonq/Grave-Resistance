@@ -206,7 +206,11 @@ public class ZombieController : MonoBehaviour
     
     public void TakeDamage(float damage)
     {
+        // İlk olarak dead check yap!
+        if (health <= 0) return; // Zaten ölüyse hasar alma
+        
         health -= damage;
+        health = Mathf.Clamp(health, 0f, 100f);
         
         if (health <= 0)
         {
@@ -216,24 +220,32 @@ public class ZombieController : MonoBehaviour
     
     void Die()
     {
-        Debug.Log("=== ZOMBIE DIE() CALLED ===");
+        // Double death prevention
+        if (agent.enabled == false) return; // Zaten ölmüşse return
         
-        // Notify GameManager for kill count
+        // Notify GameManager for kill count - SADECE BİR KEZ
         if (GameManager.Instance != null)
         {
-            Debug.Log("GameManager found, calling AddKill()");
             GameManager.Instance.AddKill();
-        }
-        else
-        {
-            Debug.LogError("GameManager.Instance is NULL!");
         }
         
         // Disable components
         agent.enabled = false;
         this.enabled = false;
         
-        // TODO: Death animation, loot drop, etc.
+        // Disable collider to prevent further damage
+        Collider zombieCollider = GetComponent<Collider>();
+        if (zombieCollider != null)
+        {
+            zombieCollider.enabled = false;
+        }
+        
+        // Visual death indicator
+        Renderer zombieRenderer = GetComponent<Renderer>();
+        if (zombieRenderer != null)
+        {
+            zombieRenderer.material.color = Color.gray; // Griye çevir
+        }
     }
     
     // Debug visualization
