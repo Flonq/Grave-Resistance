@@ -6,12 +6,24 @@ public class GameUIController : MonoBehaviour
 {
     [Header("UI References")]
     public TextMeshProUGUI ammoText;
-    public Slider healthBar;
-    public TextMeshProUGUI scoreText; // YENİ
-    public TextMeshProUGUI weaponIndicator; // YENİ
+    public Slider healthBar; // Eski sistem (kaldırabiliriz)
+    public TextMeshProUGUI scoreText;
+    public TextMeshProUGUI weaponIndicator;
+
+    [Header("Heart Health System")]
+    public Image[] heartImages; // 5 heart image array
+
+    [Header("Animation Settings")]
+    public float healthBarAnimationSpeed = 3f; // Animation hızı
+
+    // Private animation variables
+    private float targetHealthValue = 1f;
+    private float currentHealthValue = 1f;
+
+    [Header("Components")]
     public WeaponController weaponController;
     public PlayerHealth playerHealth;
-    public WeaponManager weaponManager; // YENİ
+    public WeaponManager weaponManager;
     
     void Start()
     {
@@ -38,6 +50,22 @@ public class GameUIController : MonoBehaviour
     void Update()
     {
         UpdateAmmoUI();
+        
+        // Smooth health bar animation
+        AnimateHealthBar();
+    }
+
+    void AnimateHealthBar()
+    {
+        if (healthBar != null)
+        {
+            // Lerp current value towards target
+            currentHealthValue = Mathf.Lerp(currentHealthValue, targetHealthValue, 
+                                           healthBarAnimationSpeed * Time.deltaTime);
+            
+            // Update health bar with smooth value
+            healthBar.value = currentHealthValue;
+        }
     }
     
     void UpdateAmmoUI()
@@ -52,9 +80,41 @@ public class GameUIController : MonoBehaviour
     
     void UpdateHealthUI(float currentHealth, float maxHealth)
     {
-        if (healthBar != null)
+        // Set target value instead of direct assignment
+        targetHealthValue = currentHealth / maxHealth;
+        
+        // Don't update healthBar.value directly anymore
+        // Animation will handle it in AnimateHealthBar()
+    }
+
+    void UpdateHeartDisplay(float currentHealth, float maxHealth)
+    {
+        if (heartImages == null || heartImages.Length == 0) return;
+        
+        // Calculate hearts (each heart = 20 health for 100 max health)
+        float healthPerHeart = maxHealth / heartImages.Length; // 100/5 = 20
+        
+        for (int i = 0; i < heartImages.Length; i++)
         {
-            healthBar.value = currentHealth / maxHealth;
+            if (heartImages[i] == null) continue;
+            
+            float heartThreshold = (i + 1) * healthPerHeart; // 20, 40, 60, 80, 100
+            
+            if (currentHealth >= heartThreshold)
+            {
+                // Full heart - Red
+                heartImages[i].color = Color.red;
+            }
+            else if (currentHealth > i * healthPerHeart)
+            {
+                // Partial heart - Orange (optional)
+                heartImages[i].color = new Color(1f, 0.5f, 0f, 1f); // Orange
+            }
+            else
+            {
+                // Empty heart - Gray
+                heartImages[i].color = Color.gray;
+            }
         }
     }
     

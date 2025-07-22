@@ -6,6 +6,7 @@ public class WeaponController : MonoBehaviour
     [Header("Weapon Settings")]
     public WeaponData currentWeapon;
     public Transform firePoint;
+    public Camera playerCamera; // MANUEL ASSIGNMENT
     public LayerMask enemyLayers = 1;
     
     [Header("Visual Effects")]
@@ -13,7 +14,6 @@ public class WeaponController : MonoBehaviour
     public GameObject impactEffect;
     
     // Components
-    private Camera playerCamera;
     private AudioSource audioSource;
     
     // Shooting variables
@@ -22,19 +22,29 @@ public class WeaponController : MonoBehaviour
     
     void Start()
     {
-        // Get components
+        // Try multiple ways to get camera
         playerCamera = Camera.main;
+        
+        if (playerCamera == null)
+        {
+            playerCamera = FindObjectOfType<Camera>();
+        }
+        
+        if (playerCamera == null)
+        {
+            playerCamera = GetComponentInParent<Camera>();
+        }
+        
         audioSource = GetComponent<AudioSource>();
         
-        // Initialize weapon - RESET VALUES!
+        // Initialize weapon
         if (currentWeapon != null)
         {
-            // Reset to original values every game start
             currentWeapon.currentAmmo = currentWeapon.maxAmmo;
-            currentWeapon.reserveAmmo = 48; // Or whatever starting reserve you want
-            
-            Debug.Log($"Weapon initialized: {currentWeapon.currentAmmo}/{currentWeapon.reserveAmmo}");
+            currentWeapon.reserveAmmo = 48;
         }
+        
+        Debug.Log($"Camera found: {playerCamera != null}");
     }
     
     void Update()

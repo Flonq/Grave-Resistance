@@ -6,8 +6,6 @@ public class PlayerHealth : MonoBehaviour
     [Header("Health Settings")]
     public float maxHealth = 100f;
     public float currentHealth = 100f;
-    public float healthRegenRate = 5f; // Health per second
-    public float healthRegenDelay = 3f; // Delay after taking damage
     
     [Header("Damage Settings")]
     public float damageFlashDuration = 0.1f;
@@ -19,7 +17,6 @@ public class PlayerHealth : MonoBehaviour
     // Private variables
     private float lastDamageTime;
     private bool isDead = false;
-    private Coroutine regenCoroutine;
     
     void Start()
     {
@@ -29,14 +26,8 @@ public class PlayerHealth : MonoBehaviour
     
     void Update()
     {
-        // Auto health regeneration
-        if (!isDead && currentHealth < maxHealth && Time.time - lastDamageTime > healthRegenDelay)
-        {
-            if (regenCoroutine == null)
-            {
-                regenCoroutine = StartCoroutine(RegenerateHealth());
-            }
-        }
+        // Auto health regeneration kaldırıldı
+        // Manual health pickup sistemi kullanılacak
     }
     
     public void TakeDamage(float damage)
@@ -45,21 +36,13 @@ public class PlayerHealth : MonoBehaviour
         
         currentHealth -= damage;
         currentHealth = Mathf.Clamp(currentHealth, 0f, maxHealth);
-        lastDamageTime = Time.time;
+        // lastDamageTime = Time.time; // KALDIR (regen için gereksiz)
         
-        // Stop health regeneration
-        if (regenCoroutine != null)
-        {
-            StopCoroutine(regenCoroutine);
-            regenCoroutine = null;
-        }
+        // Stop health regeneration kodları KALDIR
         
         // Trigger events
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
         
-        Debug.Log($"Player took {damage} damage! Health: {currentHealth}/{maxHealth}");
-        
-        // Check for death
         if (currentHealth <= 0)
         {
             Die();
@@ -78,20 +61,7 @@ public class PlayerHealth : MonoBehaviour
         Debug.Log($"Player healed {amount}! Health: {currentHealth}/{maxHealth}");
     }
     
-    IEnumerator RegenerateHealth()
-    {
-        while (currentHealth < maxHealth && !isDead)
-        {
-            currentHealth += healthRegenRate * Time.deltaTime;
-            currentHealth = Mathf.Clamp(currentHealth, 0f, maxHealth);
-            
-            OnHealthChanged?.Invoke(currentHealth, maxHealth);
-            
-            yield return null;
-        }
-        
-        regenCoroutine = null;
-    }
+    // IEnumerator RegenerateHealth() // TÜM FONKSİYONU SİL
     
     void Die()
     {
