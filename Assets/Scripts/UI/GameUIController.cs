@@ -13,6 +13,11 @@ public class GameUIController : MonoBehaviour
     [Header("Heart Health System")]
     public Image[] heartImages; // 5 heart image array
 
+    [Header("Wave UI")]
+    public TMPro.TextMeshProUGUI waveText;
+    public TMPro.TextMeshProUGUI countdownText;
+    public TMPro.TextMeshProUGUI zombiesRemainingText;
+
     [Header("Animation Settings")]
     public float healthBarAnimationSpeed = 3f; // Animation hızı
 
@@ -44,6 +49,13 @@ public class GameUIController : MonoBehaviour
         if (weaponManager != null)
         {
             weaponManager.OnWeaponChanged += UpdateWeaponUI;
+        }
+
+        // Subscribe to WaveManager events
+        if (WaveManager.Instance != null)
+        {
+            WaveManager.Instance.OnWaveChanged += UpdateWaveUI;
+            WaveManager.Instance.OnZombieCountChanged += UpdateZombieCountUI;
         }
     }
     
@@ -133,6 +145,18 @@ public class GameUIController : MonoBehaviour
             weaponIndicator.text = $"{index + 1}. {weapon.weaponName}";
         }
     }
+
+    void UpdateWaveUI(int waveNumber)
+    {
+        if (waveText != null)
+            waveText.text = $"Wave {waveNumber}";
+    }
+
+    void UpdateZombieCountUI(int zombiesRemaining)
+    {
+        if (zombiesRemainingText != null)
+            zombiesRemainingText.text = $"Zombies: {zombiesRemaining}";
+    }
     
     void OnDestroy()
     {
@@ -153,6 +177,13 @@ public class GameUIController : MonoBehaviour
         if (weaponManager != null)
         {
             weaponManager.OnWeaponChanged -= UpdateWeaponUI;
+        }
+
+        // Unsubscribe from WaveManager events
+        if (WaveManager.Instance != null)
+        {
+            WaveManager.Instance.OnWaveChanged -= UpdateWaveUI;
+            WaveManager.Instance.OnZombieCountChanged -= UpdateZombieCountUI;
         }
     }
 }

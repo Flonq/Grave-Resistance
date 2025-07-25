@@ -27,7 +27,7 @@ public class WeaponController : MonoBehaviour
         
         if (playerCamera == null)
         {
-            playerCamera = FindObjectOfType<Camera>();
+            playerCamera = FindFirstObjectByType<Camera>();
         }
         
         if (playerCamera == null)

@@ -21,8 +21,28 @@ public class MenuManager : MonoBehaviour
     public TMP_Dropdown resolutionDropdown;
     public Toggle fullscreenToggle;
     
+    [Header("Fade Transition")]
+    public Animator fadeAnimator;
+    
+    [Header("Button References")]
+    public Animator playButtonAnimator;
+    public Animator settingsButtonAnimator;
+    public Animator quitButtonAnimator;
+    public Animator backButtonAnimator;
+    
+    // CACHE EDILEN WAIT OBJECTS
+    private WaitForSeconds fadeWait = new WaitForSeconds(0.5f);
+    private WaitForSeconds shortWait = new WaitForSeconds(0.2f);
+    
     private void Start()
     {
+        // FADEPANEL'I KORU
+        if (fadeAnimator != null)
+        {
+            DontDestroyOnLoad(fadeAnimator.gameObject);
+            Debug.Log("FadePanel marked as DontDestroyOnLoad");
+        }
+            
         // Settings panel başlangıçta kapalı
         if (settingsPanel != null)
             settingsPanel.SetActive(false);
@@ -43,6 +63,22 @@ public class MenuManager : MonoBehaviour
         if (fullscreenToggle != null)
             fullscreenToggle.onValueChanged.AddListener(OnFullscreenChanged);
             
+        // FADEPANEL OTOMATIK BUL
+        if (fadeAnimator == null)
+        {
+            GameObject fadePanel = GameObject.Find("FadePanel");
+            if (fadePanel != null)
+            {
+                fadeAnimator = fadePanel.GetComponent<Animator>();
+                DontDestroyOnLoad(fadeAnimator.gameObject);
+                Debug.Log("FadeAnimator automatically found and preserved!");
+            }
+            else
+            {
+                Debug.LogError("FadePanel GameObject not found in scene!");
+            }
+        }
+            
         // Başlangıç değerlerini ayarla
         LoadSettings();
     }
@@ -51,8 +87,7 @@ public class MenuManager : MonoBehaviour
     public void PlayGame()
     {
         PlayButtonSound();
-        Debug.Log("Loading Game Scene...");
-        SceneManager.LoadScene("GraveResistance");
+        FadeToScene("GraveResistance");
     }
     
     // SETTINGS Button Function  
@@ -105,7 +140,14 @@ public class MenuManager : MonoBehaviour
     {
         PlayButtonSound();
         Debug.Log("QUIT Game!");
+        
+        #if UNITY_EDITOR
+        // Unity Editor'da
+        UnityEditor.EditorApplication.isPlaying = false;
+        #else
+        // Build'de
         Application.Quit();
+        #endif
     }
     
     // VOLUME değiştiğinde
@@ -124,7 +166,6 @@ public class MenuManager : MonoBehaviour
     public void OnGraphicsQualityChanged(int qualityIndex)
     {
         QualitySettings.SetQualityLevel(qualityIndex);
-        Debug.Log("Graphics Quality: " + QualitySettings.names[qualityIndex]);
     }
     
     // RESOLUTION değiştiğinde
@@ -150,7 +191,6 @@ public class MenuManager : MonoBehaviour
     public void OnFullscreenChanged(bool isFullscreen)
     {
         Screen.fullScreen = isFullscreen;
-        Debug.Log("Fullscreen: " + isFullscreen);
     }
     
     // AYARLARI KAYDET
@@ -251,5 +291,38 @@ public class MenuManager : MonoBehaviour
         Animator animator = GameObject.Find("QuitButton").GetComponent<Animator>();
         if (animator != null)
             animator.SetBool("IsHovering", false);
+    }
+
+    // BACK BUTTON ANIMATION
+    public void StartBackHover()
+    {
+        if (backButtonAnimator != null)
+            backButtonAnimator.SetBool("IsHovering", true);
+    }
+
+    public void EndBackHover()
+    {
+        Animator animator = GameObject.Find("BackButton").GetComponent<Animator>();
+        if (animator != null)
+            animator.SetBool("IsHovering", false);
+    }
+
+    // FADE TRANSITION METHODS
+    public void FadeToScene(string sceneName)
+    {
+        StartCoroutine(FadeAndLoadScene(sceneName));
+    }
+
+    private System.Collections.IEnumerator FadeAndLoadScene(string sceneName)
+    {
+        if (fadeAnimator != null)
+            fadeAnimator.SetTrigger("FadeIn");
+            
+        yield return fadeWait;
+        SceneManager.LoadScene(sceneName);
+        
+        yield return shortWait;
+        if (fadeAnimator != null)
+            fadeAnimator.SetTrigger("FadeOut");
     }
 } 

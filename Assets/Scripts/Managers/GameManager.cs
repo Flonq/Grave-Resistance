@@ -132,17 +132,29 @@ public class GameManager : MonoBehaviour
     {
         Debug.Log("=== UPDATING GAME OVER STATS ===");
         
-        // Wait a frame for GameOverCanvas to become active
-        StartCoroutine(UpdateStatsAfterFrame());
+        // Geçici olarak devre dışı
+        // StartCoroutine(UpdateStatsAfterFrame());
+        
+        Debug.Log($"Game Over Stats: Kills: {killCount}, Score: {playerScore}, Time: {GetFormattedTime()}");
     }
 
     System.Collections.IEnumerator UpdateStatsAfterFrame()
     {
         yield return new WaitForEndOfFrame();
         
-        // Now find StatsText after GameOverCanvas is active
-        GameObject statsText = GameObject.Find("StatsText");
-        Debug.Log($"Found StatsText after frame: {statsText}");
+        // SAFE search with timeout
+        float timeout = 1f; // 1 saniye timeout
+        float elapsed = 0f;
+        GameObject statsText = null;
+        
+        while (elapsed < timeout && statsText == null)
+        {
+            statsText = GameObject.Find("StatsText");
+            if (statsText != null) break;
+            
+            yield return new WaitForSeconds(0.1f);
+            elapsed += 0.1f;
+        }
         
         if (statsText != null)
         {
@@ -156,7 +168,8 @@ public class GameManager : MonoBehaviour
         }
         else
         {
-            Debug.LogError("StatsText still not found after frame!");
+            Debug.LogWarning("StatsText not found - Game Over UI may be missing");
+            // Infinite error'u engelle
         }
     }
     

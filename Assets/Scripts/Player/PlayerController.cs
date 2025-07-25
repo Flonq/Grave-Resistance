@@ -22,6 +22,9 @@ public class PlayerController : MonoBehaviour
     [Header("Combat")]
     public WeaponController weaponController;
     
+    [Header("Camera")]
+    public CameraSwitcher cameraSwitcher;
+    
     // Components
     private CharacterController controller;
     private PlayerInputActions inputActions;
@@ -66,6 +69,7 @@ public class PlayerController : MonoBehaviour
         inputActions.Player.Aim.performed += OnAim; // Reload için kullanacağız
         inputActions.Player.Reload.performed += OnReload;
         inputActions.Player.Pause.performed += OnPause;
+        inputActions.Player.SwitchCamera.performed += OnSwitchCamera;
     }
     
     void OnDisable()
@@ -84,6 +88,7 @@ public class PlayerController : MonoBehaviour
         inputActions.Player.Aim.performed -= OnAim;
         inputActions.Player.Reload.performed -= OnReload;
         inputActions.Player.Pause.performed -= OnPause;
+        inputActions.Player.SwitchCamera.performed -= OnSwitchCamera;
     }
     
     void Update()
@@ -112,17 +117,20 @@ public class PlayerController : MonoBehaviour
     
     void HandleLook()
     {
-        // Mouse look
+        // Normal FPS look (her zaman çalışır)
         float mouseX = lookInput.x * mouseSensitivity * Time.deltaTime;
         float mouseY = lookInput.y * mouseSensitivity * Time.deltaTime;
         
         // Rotate the player body horizontally
         transform.Rotate(Vector3.up * mouseX);
         
-        // Rotate the camera vertically
-        xRotation -= mouseY;
-        xRotation = Mathf.Clamp(xRotation, -lookDownLimit, lookUpLimit);
-        playerCamera.transform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
+        // Rotate the camera vertically (sadece FPS kamera için)
+        if (cameraSwitcher != null && cameraSwitcher.currentMode == CameraSwitcher.CameraMode.FPS)
+        {
+            xRotation -= mouseY;
+            xRotation = Mathf.Clamp(xRotation, -lookDownLimit, lookUpLimit);
+            playerCamera.transform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
+        }
         
         // Input'u sıfırla
         lookInput = Vector2.zero;
@@ -234,6 +242,15 @@ public class PlayerController : MonoBehaviour
         if (GameManager.Instance != null)
         {
             GameManager.Instance.TogglePause();
+        }
+    }
+
+    void OnSwitchCamera(InputAction.CallbackContext context)
+    {
+        if (cameraSwitcher != null)
+        {
+            cameraSwitcher.ToggleCameraMode();
+            Debug.Log($"Camera switched to: {cameraSwitcher.currentMode}");
         }
     }
 } 

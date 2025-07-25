@@ -229,7 +229,13 @@ public class ZombieController : MonoBehaviour
             GameManager.Instance.AddKill();
         }
         
-        // Disable components
+        // WaveManager'a zombie death bildir
+        if (WaveManager.Instance != null)
+        {
+            WaveManager.Instance.OnZombieDeath();
+        }
+        
+        // Disable components immediately
         agent.enabled = false;
         this.enabled = false;
         
@@ -240,12 +246,8 @@ public class ZombieController : MonoBehaviour
             zombieCollider.enabled = false;
         }
         
-        // Visual death indicator
-        Renderer zombieRenderer = GetComponent<Renderer>();
-        if (zombieRenderer != null)
-        {
-            zombieRenderer.material.color = Color.gray; // Griye çevir
-        }
+        // Start fade and destroy
+        StartCoroutine(FadeAndDestroy());
     }
     
     // Debug visualization
@@ -262,5 +264,32 @@ public class ZombieController : MonoBehaviour
         // Patrol range
         Gizmos.color = Color.blue;
         Gizmos.DrawWireSphere(startPosition, patrolRange);
+    }
+
+    System.Collections.IEnumerator FadeAndDestroy()
+    {
+        Renderer zombieRenderer = GetComponent<Renderer>();
+        if (zombieRenderer == null)
+        {
+            Destroy(gameObject);
+            yield break;
+        }
+        
+        Material material = zombieRenderer.material;
+        Color originalColor = material.color;
+        
+        // 2 saniye içinde fade out
+        float fadeDuration = 2f;
+        for (float t = 0; t < fadeDuration; t += Time.deltaTime)
+        {
+            float alpha = Mathf.Lerp(1f, 0f, t / fadeDuration);
+            Color newColor = originalColor;
+            newColor.a = alpha;
+            material.color = newColor;
+            yield return null;
+        }
+        
+        // Tamamen yok et
+        Destroy(gameObject);
     }
 } 
