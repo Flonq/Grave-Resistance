@@ -29,6 +29,15 @@ public class PlayerController : MonoBehaviour
     [Header("TPS Settings")]
     public float characterRotationSpeed = 10f;
     
+    [Header("Body Rotation")]
+    public Transform upperBody;
+    public Transform lowerBody;
+    public float bodyRotationSpeed = 5f;
+    public float maxBodyAngle = 45f;
+    
+    [Header("Character Animation")]
+    public CharacterAnimator characterAnimator;
+    
     // Components
     private CharacterController controller;
     private PlayerInputActions inputActions;
@@ -63,6 +72,17 @@ public class PlayerController : MonoBehaviour
         // Cursor settings
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
+    }
+    
+    void Start()
+    {
+        // Character animator'ı otomatik bul
+        if (characterAnimator == null)
+            characterAnimator = GetComponent<CharacterAnimator>();
+        
+        // Eğer yoksa oluştur
+        if (characterAnimator == null)
+            characterAnimator = gameObject.AddComponent<CharacterAnimator>();
     }
     
     void OnEnable()
@@ -177,20 +197,25 @@ public class PlayerController : MonoBehaviour
     
     void HandleTPSRotation()
     {
-        // TPS modunda karakter rotasyonu
         if (cameraSwitcher != null && cameraSwitcher.currentMode == CameraSwitcher.CameraMode.TPS && tpsCamera != null)
         {
-            // Hareket ederken veya aim alırken karakteri kameranın yönüne döndür
             if (moveInput.magnitude > 0.1f || isAiming)
             {
-                // Kameranın yatay yönünü al (Y ekseni rotasyonu)
                 Vector3 cameraForward = tpsCamera.transform.forward;
                 cameraForward.y = 0;
                 cameraForward = cameraForward.normalized;
-                
+
                 if (cameraForward.magnitude > 0.1f)
                 {
                     Quaternion targetRotation = Quaternion.LookRotation(cameraForward);
+
+                    // Dönüş hızları (derece/saniye)
+                    float fireTurnSpeed = 360f; // Ateş sırasında çok hızlı döner
+                    float normalTurnSpeed = 120f; // Normalde daha yavaş döner
+
+                    float turnSpeed = Mouse.current.leftButton.isPressed ? fireTurnSpeed : normalTurnSpeed;
+
+                    // RotateTowards ile yumuşak ve kontrollü dönüş
                     transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, characterRotationSpeed * Time.deltaTime);
                 }
             }

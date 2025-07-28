@@ -38,5 +38,26 @@ public class CameraSwitcher : MonoBehaviour
                 tpsCamera.enabled = true;
                 break;
         }
+        
+        // Silah pozisyonunu güncelle
+        UpdateWeaponPosition();
+    }
+    
+    void UpdateWeaponPosition()
+    {
+        // WeaponController'ı bul ve pozisyonu güncelle
+        WeaponController weaponController = FindFirstObjectByType<WeaponController>();
+        if (weaponController != null)
+        {
+            // Güvenli çağrı
+            try
+            {
+                weaponController.UpdateWeaponPosition();
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"Weapon position update failed: {e.Message}");
+            }
+        }
     }
 }

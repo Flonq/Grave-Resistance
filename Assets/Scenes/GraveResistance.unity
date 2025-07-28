@@ -3065,6 +3065,7 @@ GameObject:
   - component: {fileID: 898343083}
   - component: {fileID: 898343092}
   - component: {fileID: 898343094}
+  - component: {fileID: 898343095}
   m_Layer: 3
   m_Name: Player
   m_TagString: Player
@@ -3110,6 +3111,12 @@ MonoBehaviour:
   impactEffect: {fileID: 0}
   cameraSwitcher: {fileID: 0}
   tpsCamera: {fileID: 0}
+  weaponModels: []
+  availableWeapons:
+  - {fileID: 11400000, guid: 00dd61a2a23790346985c340130a78db, type: 2}
+  - {fileID: 11400000, guid: 8cc0631834977d944a162f1668de0f2d, type: 2}
+  - {fileID: 11400000, guid: 28cca09ccd3cc0541821781fd526d087, type: 2}
+  enablePlaceholders: 1
 --- !u!114 &898343085
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3151,6 +3158,11 @@ MonoBehaviour:
   cameraSwitcher: {fileID: 898343092}
   tpsCamera: {fileID: 0}
   characterRotationSpeed: 10
+  upperBody: {fileID: 0}
+  lowerBody: {fileID: 0}
+  bodyRotationSpeed: 5
+  maxBodyAngle: 45
+  characterAnimator: {fileID: 0}
 --- !u!143 &898343087
 CharacterController:
   m_ObjectHideFlags: 0
@@ -3297,6 +3309,27 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _yawLimit: 180
   _pitchLimit: 60
+--- !u!114 &898343095
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 898343082}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4d0a48ea8fd6386478f44b617803c538, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  upperBody: {fileID: 0}
+  lowerBody: {fileID: 0}
+  head: {fileID: 0}
+  upperBodyRotationSpeed: 5
+  headRotationSpeed: 8
+  maxUpperBodyAngle: 45
+  maxHeadAngle: 80
+  returnSpeed: 2
+  rotationSmoothness: 5
 --- !u!1 &902458231
 GameObject:
   m_ObjectHideFlags: 0
@@ -5632,7 +5665,7 @@ Camera:
     y: 0
     width: 1
     height: 1
-  near clip plane: 0.3
+  near clip plane: 0.01
   far clip plane: 1000
   field of view: 60
   orthographic: 0

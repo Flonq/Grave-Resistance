@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   weaponName: Shotgun
   weaponType: 1
-  damage: 80
+  damage: 120
   range: 25
   fireRate: 1.2
   maxAmmo: 6
@@ -25,3 +25,13 @@ MonoBehaviour:
   fireSound: {fileID: 0}
   reloadSound: {fileID: 0}
   muzzleFlash: {fileID: 0}
+  weaponModelPrefab: {fileID: 0}
+  modelPosition: {x: 0, y: 0, z: 0}
+  modelRotation: {x: 0, y: 0, z: 0}
+  modelScale: {x: 1, y: 1, z: 1}
+  fireAnimationSpeed: 1
+  reloadAnimationSpeed: 1
+  fireMode: 0
+  pelletCount: 8
+  spreadAngle: 15
+  isShotgun: 1

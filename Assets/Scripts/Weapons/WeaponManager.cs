@@ -24,10 +24,11 @@ public class WeaponManager : MonoBehaviour
     
     void Start()
     {
-        // Start with first weapon (Pistol)
+        // YENİ: İlk silahı otomatik olarak yükle
         if (availableWeapons.Length > 0)
         {
-            SwitchToWeapon(0);
+            SwitchToWeapon(0); // İlk silahı (Pistol) yükle
+            Debug.Log("WeaponManager: First weapon loaded");
         }
     }
     
