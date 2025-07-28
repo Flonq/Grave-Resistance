@@ -24,6 +24,10 @@ public class PlayerController : MonoBehaviour
     
     [Header("Camera")]
     public CameraSwitcher cameraSwitcher;
+    public GTAOrbitCamera tpsCamera;
+    
+    [Header("TPS Settings")]
+    public float characterRotationSpeed = 10f;
     
     // Components
     private CharacterController controller;
@@ -39,11 +43,19 @@ public class PlayerController : MonoBehaviour
     private float currentSpeed;
     private float xRotation = 0f;
     
+    // TPS Aiming
+    private bool isAiming = false;
+    private bool wasAiming = false; // Önceki frame'de aim alıyor muydu
+    
     void Awake()
     {
         // Get components
         controller = GetComponent<CharacterController>();
         playerCamera = GetComponentInChildren<Camera>();
+        
+        // TPS kamera bul
+        if (tpsCamera == null)
+            tpsCamera = FindFirstObjectByType<GTAOrbitCamera>();
         
         // Initialize input
         inputActions = new PlayerInputActions();
@@ -66,7 +78,7 @@ public class PlayerController : MonoBehaviour
         inputActions.Player.Run.canceled += OnRunEnd;
         inputActions.Player.Crouch.performed += OnCrouch;
         inputActions.Player.Fire.performed += OnFire;
-        inputActions.Player.Aim.performed += OnAim; // Reload için kullanacağız
+        // Aim event'lerini kaldırıyoruz - manuel kontrol yapacağız
         inputActions.Player.Reload.performed += OnReload;
         inputActions.Player.Pause.performed += OnPause;
         inputActions.Player.SwitchCamera.performed += OnSwitchCamera;
@@ -85,7 +97,6 @@ public class PlayerController : MonoBehaviour
         inputActions.Player.Run.canceled -= OnRunEnd;
         inputActions.Player.Crouch.performed -= OnCrouch;
         inputActions.Player.Fire.performed -= OnFire;
-        inputActions.Player.Aim.performed -= OnAim;
         inputActions.Player.Reload.performed -= OnReload;
         inputActions.Player.Pause.performed -= OnPause;
         inputActions.Player.SwitchCamera.performed -= OnSwitchCamera;
@@ -96,6 +107,30 @@ public class PlayerController : MonoBehaviour
         HandleMovement();
         HandleLook();
         HandleGravity();
+        HandleTPSRotation();
+        HandleAiming(); // YENİ: Manuel aim kontrolü
+    }
+    
+    // YENİ METOD: Manuel aim kontrolü
+    void HandleAiming()
+    {
+        // Sağ tık durumunu kontrol et
+        bool currentlyAiming = Mouse.current.rightButton.isPressed;
+        
+        // Durum değişti mi?
+        if (currentlyAiming != wasAiming)
+        {
+            isAiming = currentlyAiming;
+            
+            if (tpsCamera != null)
+            {
+                tpsCamera.SetAiming(isAiming);
+            }
+            
+            Debug.Log($"Aim mode changed: {(isAiming ? "ON" : "OFF")}");
+            
+            wasAiming = currentlyAiming;
+        }
     }
     
     void HandleMovement()
@@ -103,10 +138,14 @@ public class PlayerController : MonoBehaviour
         // Calculate current speed
         if (isCrouching)
             currentSpeed = crouchSpeed;
-        else if (isRunning)
+        else if (isRunning && !isAiming)
             currentSpeed = runSpeed;
         else
             currentSpeed = walkSpeed;
+        
+        // Aim alırken yavaşla
+        if (isAiming)
+            currentSpeed *= 0.5f;
         
         // Calculate movement direction
         Vector3 move = transform.right * moveInput.x + transform.forward * moveInput.y;
@@ -117,16 +156,16 @@ public class PlayerController : MonoBehaviour
     
     void HandleLook()
     {
-        // Normal FPS look (her zaman çalışır)
-        float mouseX = lookInput.x * mouseSensitivity * Time.deltaTime;
-        float mouseY = lookInput.y * mouseSensitivity * Time.deltaTime;
-        
-        // Rotate the player body horizontally
-        transform.Rotate(Vector3.up * mouseX);
-        
-        // Rotate the camera vertically (sadece FPS kamera için)
+        // Normal FPS look (sadece FPS modunda)
         if (cameraSwitcher != null && cameraSwitcher.currentMode == CameraSwitcher.CameraMode.FPS)
         {
+            float mouseX = lookInput.x * mouseSensitivity * Time.deltaTime;
+            float mouseY = lookInput.y * mouseSensitivity * Time.deltaTime;
+            
+            // Rotate the player body horizontally
+            transform.Rotate(Vector3.up * mouseX);
+            
+            // Rotate the camera vertically
             xRotation -= mouseY;
             xRotation = Mathf.Clamp(xRotation, -lookDownLimit, lookUpLimit);
             playerCamera.transform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
@@ -136,12 +175,34 @@ public class PlayerController : MonoBehaviour
         lookInput = Vector2.zero;
     }
     
+    void HandleTPSRotation()
+    {
+        // TPS modunda karakter rotasyonu
+        if (cameraSwitcher != null && cameraSwitcher.currentMode == CameraSwitcher.CameraMode.TPS && tpsCamera != null)
+        {
+            // Hareket ederken veya aim alırken karakteri kameranın yönüne döndür
+            if (moveInput.magnitude > 0.1f || isAiming)
+            {
+                // Kameranın yatay yönünü al (Y ekseni rotasyonu)
+                Vector3 cameraForward = tpsCamera.transform.forward;
+                cameraForward.y = 0;
+                cameraForward = cameraForward.normalized;
+                
+                if (cameraForward.magnitude > 0.1f)
+                {
+                    Quaternion targetRotation = Quaternion.LookRotation(cameraForward);
+                    transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, characterRotationSpeed * Time.deltaTime);
+                }
+            }
+        }
+    }
+    
     void HandleGravity()
     {
         // Ground check
         if (controller.isGrounded && velocity.y < 0)
         {
-            velocity.y = -2f; // Small negative value to stay grounded
+            velocity.y = -2f;
         }
         
         // Apply gravity
@@ -187,13 +248,11 @@ public class PlayerController : MonoBehaviour
     {
         if (isCrouching)
         {
-            // Stand up
             controller.height = standHeight;
             isCrouching = false;
         }
         else
         {
-            // Crouch down
             controller.height = crouchHeight;
             isCrouching = true;
         }
@@ -209,33 +268,11 @@ public class PlayerController : MonoBehaviour
 
     void OnReload(InputAction.CallbackContext context)
     {
-        Debug.Log("OnReload called!"); // Debug eklendi
-        
         if (context.performed && weaponController != null)
         {
-            Debug.Log("Calling weaponController.StartReload()"); // Debug eklendi
             weaponController.StartReload();
         }
     }
-
-    void OnAim(InputAction.CallbackContext context)
-{
-    Debug.Log("OnAim called!"); // Debug eklendi
-    
-    if (context.performed)
-    {
-        Debug.Log("Starting aim...");
-        // TODO: Implement proper aim system
-        // - FOV change for zoom
-        // - Crosshair change
-        // - Movement speed reduction
-    }
-    else if (context.canceled)
-    {
-        Debug.Log("Stopping aim...");
-        // TODO: Return to normal view
-    }
-}
 
     void OnPause(InputAction.CallbackContext context)
     {
@@ -253,4 +290,7 @@ public class PlayerController : MonoBehaviour
             Debug.Log($"Camera switched to: {cameraSwitcher.currentMode}");
         }
     }
+    
+    // Public getters
+    public bool IsAiming() => isAiming;
 } 

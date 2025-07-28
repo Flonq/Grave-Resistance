@@ -2,196 +2,243 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// GTA SA tarzı orbital camera sistemi
+/// Concentric Circle TPS Camera System - Pivot and Camera move in sync
 /// </summary>
 public class GTAOrbitCamera : MonoBehaviour
 {
     [Header("Target Settings")]
-    [SerializeField]
-    private FocusPoint _target;
-
-    [Header("Camera Settings")]
-    [SerializeField]
-    private float _distance = 3f;
-    [SerializeField]
-    private float _damping = 5f;
-    [SerializeField]
-    private float _mouseSensitivity = 2f;
-
-    [Header("State Settings")]
-    public CameraState currentState = CameraState.Idle;
-    public enum CameraState { Idle, Moving, Aiming }
-
-    // Camera angles
-    private Quaternion _pitch;
-    private Quaternion _yaw;
-
-    // Target values
-    private Quaternion _targetRotation;
-    private Vector3 _targetPosition;
-
-    // Input detection
-    private bool _isMoving = false;
-    private bool _isAiming = false;
-
-    // Player reference
-    private Transform _playerTransform;
-
-    // YENİ AÇI DEĞİŞKENLERİ EKLE:
+    public Transform target;
+    
+    [Header("Circle Settings")]
+    public float pivotRadius = 2f;           
+    public float cameraRadius = 5f;          
+    public float heightOffset = 1.5f;        
+    public float pivotAngleOffset = 0f;      // ← YENİ! Pivot açı offset'i
+    public float sensitivity = 3f;
+    public float smoothTime = 0.3f;
+    
+    [Header("Aim Settings")]
+    public float aimPivotRadius = 1.5f;      // Aim modunda pivot yaklaşır
+    public float aimCameraRadius = 3f;       // Aim modunda camera yaklaşır
+    public float aimSmoothTime = 0.1f;
+    
+    [Header("Collision Settings")]
+    public LayerMask collisionLayers = ~0;
+    public float collisionRadius = 0.3f;
+    
+    [Header("Debug")]
+    public bool showGizmos = true;
+    
+    // Rotation angles
     private float horizontalAngle = 0f;
-    private float verticalAngle = 20f;
+    private float verticalAngle = 0f;
+    
+    // Aim system
+    private bool isAiming = false;
+    
+    // Smooth movement
+    private Vector3 cameraVelocity = Vector3.zero;
+    
+    // Current positions
+    private Vector3 currentPivotPosition;
+    private Vector3 currentCameraPosition;
+    
+    // Original values
+    private float originalPivotRadius;
+    private float originalCameraRadius;
+    private float originalSmoothTime;
 
-    public FocusPoint Target
+    void Start()
     {
-        get { return _target; }
-        set { _target = value; }
-    }
-
-    public float Yaw
-    {
-        get { return _yaw.eulerAngles.y; }
-        private set { _yaw = Quaternion.Euler(0, value, 0); }
-    }
-
-    public float Pitch
-    {
-        get { return _pitch.eulerAngles.x; }
-        private set { _pitch = Quaternion.Euler(value, 0, 0); }
-    }
-
-    public void HandleInput(Vector2 mouseInput, bool movementInput, bool aimInput)
-    {
-        _isMoving = movementInput;
-        _isAiming = aimInput;
-
-        // State determination
-        CameraState newState = DetermineState();
-        if (newState != currentState)
-        {
-            SetState(newState);
-        }
-
-        // Mouse input handling
-        Move(mouseInput.x * _mouseSensitivity, mouseInput.y * _mouseSensitivity);
-    }
-
-    private CameraState DetermineState()
-    {
-        if (_isAiming) return CameraState.Aiming;
-        if (_isMoving) return CameraState.Moving;
-        return CameraState.Idle;
-    }
-
-    private void SetState(CameraState newState)
-    {
-        currentState = newState;
-
-        switch (newState)
-        {
-            case CameraState.Idle:
-                // Idle state - orbital freedom
-                break;
-            case CameraState.Moving:
-                // Player rotation to camera direction
-                if (_playerTransform != null)
-                {
-                    float targetYaw = _yaw.eulerAngles.y;
-                    _playerTransform.rotation = Quaternion.Euler(0, targetYaw, 0);
-                }
-                break;
-            case CameraState.Aiming:
-                // Aim mode - closer camera, precision
-                break;
-        }
-    }
-
-    public void Move(float yawDelta, float pitchDelta)
-    {
-        _yaw = _yaw * Quaternion.Euler(0, yawDelta, 0);
-        _pitch = _pitch * Quaternion.Euler(-pitchDelta, 0, 0); // Negative for natural mouse feel
-
-        ApplyConstraints();
-    }
-
-    private void ApplyConstraints()
-    {
-        if (_target == null) return;
-
-        Quaternion targetYaw = Quaternion.Euler(0, _target.transform.rotation.eulerAngles.y, 0);
-        Quaternion targetPitch = Quaternion.Euler(_target.transform.rotation.eulerAngles.x, 0, 0);
-
-        float yawDifference = Quaternion.Angle(_yaw, targetYaw);
-        float pitchDifference = Quaternion.Angle(_pitch, targetPitch);
-
-        float yawOverflow = yawDifference - _target.YawLimit;
-        float pitchOverflow = pitchDifference - _target.PitchLimit;
-
-        if (yawOverflow > 0) { _yaw = Quaternion.Slerp(_yaw, targetYaw, yawOverflow / yawDifference); }
-        if (pitchOverflow > 0) { _pitch = Quaternion.Slerp(_pitch, targetPitch, pitchOverflow / pitchDifference); }
-    }
-
-    void Awake()
-    {
-        // Initialize angles to current rotation
-        _pitch = Quaternion.Euler(this.transform.rotation.eulerAngles.x, 0, 0);
-        _yaw = Quaternion.Euler(0, this.transform.rotation.eulerAngles.y, 0);
-
-        // Get player reference
-        if (_target != null)
-        {
-            _playerTransform = _target.transform;
-        }
-    }
-
-    void LateUpdate()
-    {
-        if (_target == null) return;
-
-        // Calculate target rotation and position
-        _targetRotation = _yaw * _pitch;
-        _targetPosition = _target.transform.position + _targetRotation * (-Vector3.forward * _distance);
-
-        // Apply smooth damping
-        this.transform.rotation = Quaternion.Lerp(this.transform.rotation, _targetRotation, 
-            Mathf.Clamp01(Time.smoothDeltaTime * _damping));
-
-        // Position camera at distance from target
-        Vector3 offset = this.transform.rotation * (-Vector3.forward * _distance);
-        this.transform.position = _target.transform.position + offset;
-    }
-
-    // Public methods for external control
-    public bool IsIdle() => currentState == CameraState.Idle;
-    public bool IsMoving() => currentState == CameraState.Moving;
-    public bool IsAiming() => currentState == CameraState.Aiming;
-
-    // Update method'unda mouse input var mı?
-    void Update()
-    {
-        // Mouse input alma
-        Vector2 mouseInput = Mouse.current.delta.ReadValue();
+        // Orijinal değerleri kaydet
+        originalPivotRadius = pivotRadius;
+        originalCameraRadius = cameraRadius;
+        originalSmoothTime = smoothTime;
         
-        // ORBITAL LOGIC:
-        if (_target != null)
+        // Player'ın başlangıç yönünü al ve pivot offset'i ekle
+        if (target != null)
         {
-            // Mouse input'u açılara çevir
-            horizontalAngle += mouseInput.x * _mouseSensitivity * Time.deltaTime;
-            verticalAngle -= mouseInput.y * _mouseSensitivity * Time.deltaTime;
+            horizontalAngle = target.eulerAngles.y + 45f;  // ← 45° offset (sağ omuz için)
             
-            // Dikey açıyı sınırla
-            verticalAngle = Mathf.Clamp(verticalAngle, -30f, 60f);
-            
-            // Target pozisyonu
-            Vector3 targetPos = _target.transform.position;
-            
-            // Kamera pozisyonunu hesapla
-            Quaternion rotation = Quaternion.Euler(verticalAngle, horizontalAngle, 0);
-            Vector3 direction = rotation * Vector3.back;
-            Vector3 cameraPosition = targetPos + direction * _distance;
-            
-            // Pozisyonu ve rotasyonu uygula
-            transform.position = Vector3.Lerp(transform.position, cameraPosition, _damping * Time.deltaTime);
-            transform.LookAt(targetPos);
+            // Player layer'ını collision'dan çıkar
+            int playerLayer = target.gameObject.layer;
+            collisionLayers = collisionLayers & ~(1 << playerLayer);
         }
     }
+
+    private void LateUpdate()
+    {
+        if (target == null) return;
+
+        HandleInput();
+        UpdateConcentricCircles();
+        ApplySmoothMovement();
+    }
+    
+    void HandleInput()
+    {
+        // Mouse input al
+        Vector2 mouseInput = Mouse.current.delta.ReadValue();
+        float scrollInput = Mouse.current.scroll.ReadValue().y;
+        
+        // SENKRON AÇI GÜNCELLEMESİ - İkisi de aynı hızda döner!
+        horizontalAngle += mouseInput.x * sensitivity * Time.deltaTime;
+        verticalAngle -= mouseInput.y * sensitivity * Time.deltaTime;
+        
+        // Dikey açıyı sınırla
+        verticalAngle = Mathf.Clamp(verticalAngle, -30f, 60f);
+        
+        // Zoom (aim modunda değilse)
+        if (!isAiming)
+        {
+            cameraRadius = Mathf.Clamp(cameraRadius - scrollInput * 0.2f, 2f, 10f);
+            pivotRadius = Mathf.Clamp(pivotRadius - scrollInput * 0.1f, 0.5f, 3f);
+        }
+    }
+    
+    void UpdateConcentricCircles()
+    {
+        // Aim moduna göre radius'ları ayarla
+        float targetPivotRadius = isAiming ? aimPivotRadius : originalPivotRadius;
+        float targetCameraRadius = isAiming ? aimCameraRadius : originalCameraRadius;
+        float targetSmoothTime = isAiming ? aimSmoothTime : originalSmoothTime;
+        
+        // Radius'ları smooth olarak güncelle
+        pivotRadius = Mathf.Lerp(pivotRadius, targetPivotRadius, Time.deltaTime * 8f);
+        cameraRadius = Mathf.Lerp(cameraRadius, targetCameraRadius, Time.deltaTime * 8f);
+        smoothTime = Mathf.Lerp(smoothTime, targetSmoothTime, Time.deltaTime * 8f);
+        
+        // Ortak merkez noktası
+        Vector3 centerPoint = target.position + Vector3.up * heightOffset;
+        
+        // SENKRON ÇEMBER HAREKETİ - Pivot için açı offset'i ekle!
+        float pivotAngle = horizontalAngle + pivotAngleOffset;  // ← Pivot'a offset ekle
+        float cameraAngle = horizontalAngle;                    // ← Camera offset'siz
+        
+        Vector3 pivotDirection = Quaternion.Euler(verticalAngle, pivotAngle, 0) * Vector3.forward;
+        Vector3 cameraDirection = Quaternion.Euler(verticalAngle, cameraAngle, 0) * Vector3.back;
+        
+        // KÜÇÜK ÇEMBER - Pivot pozisyonu (offset'li)
+        currentPivotPosition = centerPoint + (pivotDirection * pivotRadius);
+        
+        // BÜYÜK ÇEMBER - Camera pozisyonu (offset'siz)
+        Vector3 desiredCameraPosition = centerPoint + (cameraDirection * cameraRadius);
+        
+        // Collision check - Camera ile pivot arasında engel var mı?
+        currentCameraPosition = CheckCameraPivotCollision(desiredCameraPosition);
+    }
+    
+    Vector3 CheckCameraPivotCollision(Vector3 desiredCameraPosition)
+    {
+        Vector3 pivotToCameraDirection = desiredCameraPosition - currentPivotPosition;
+        float maxDistance = pivotToCameraDirection.magnitude;
+        
+        if (maxDistance < 0.1f) return desiredCameraPosition;
+        
+        RaycastHit hitInfo;
+        
+        // Pivot'tan camera'ya raycast - Player'dan geçer mi?
+        if (Physics.SphereCast(currentPivotPosition, collisionRadius, pivotToCameraDirection.normalized, out hitInfo, maxDistance, collisionLayers))
+        {
+            // Collision var - Camera'yı safe distance'a çek
+            float safeDistance = hitInfo.distance - collisionRadius;
+            safeDistance = Mathf.Max(safeDistance, 0.5f); // Minimum mesafe
+            
+            return currentPivotPosition + pivotToCameraDirection.normalized * safeDistance;
+        }
+        
+        return desiredCameraPosition;
+    }
+    
+    void ApplySmoothMovement()
+    {
+        // Camera pozisyonunu smooth olarak güncelle
+        transform.position = Vector3.SmoothDamp(transform.position, currentCameraPosition, ref cameraVelocity, smoothTime);
+        
+        // Kamerayı SEMPRE pivot'a baktır
+        transform.LookAt(currentPivotPosition);
+    }
+    
+    // Public methods for external control
+    public void SetAiming(bool aiming)
+    {
+        if (isAiming != aiming)
+        {
+            isAiming = aiming;
+            Debug.Log($"Concentric Camera Aiming: {isAiming}");
+        }
+    }
+    
+    // Crosshair pivot pozisyonunu gösterir
+    public Ray GetCenterRay()
+    {
+        Camera cam = GetComponent<Camera>();
+        return cam.ScreenPointToRay(new Vector3(Screen.width / 2f, Screen.height / 2f, 0));
+    }
+    
+    public Vector3 GetPivotPosition() => currentPivotPosition;
+    public Vector3 GetCameraForward() => transform.forward;
+    
+    // Public method - Kod ile pivot pozisyonunu değiştir
+    public void SetPivotOffset(float angleOffset)
+    {
+        pivotAngleOffset = angleOffset;
+        Debug.Log($"Pivot Angle Offset set to: {angleOffset}°");
+    }
+
+    // Önceden tanımlı pozisyonlar
+    public void SetPivotToRightShoulder() => SetPivotOffset(45f);    // Sağ omuz
+    public void SetPivotToCenter() => SetPivotOffset(0f);           // Tam arkada  
+    public void SetPivotToLeftShoulder() => SetPivotOffset(-45f);   // Sol omuz
+    public void SetPivotToFront() => SetPivotOffset(180f);          // Tam önde
+    
+    // Debug için
+    void OnDrawGizmos()
+    {
+        if (!showGizmos || target == null) return;
+        
+        Vector3 centerPoint = target.position + Vector3.up * heightOffset;
+        
+        // Çemberleri çiz
+        Gizmos.color = Color.yellow;
+        DrawCircle(centerPoint, pivotRadius, 32); // Küçük çember
+        
+        Gizmos.color = Color.cyan;
+        DrawCircle(centerPoint, cameraRadius, 32); // Büyük çember
+        
+        // Pivot pozisyonu
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(currentPivotPosition, 0.15f);
+        
+        // Camera pozisyonu
+        Gizmos.color = Color.blue;
+        Gizmos.DrawWireSphere(currentCameraPosition, 0.2f);
+        
+        // Pivot ile camera arasındaki sight line
+        Gizmos.color = Color.magenta;
+        Gizmos.DrawLine(currentPivotPosition, currentCameraPosition);
+        
+        // Merkez noktası
+        Gizmos.color = Color.white;
+        Gizmos.DrawWireSphere(centerPoint, 0.1f);
+    }
+    
+    void DrawCircle(Vector3 center, float radius, int segments)
+    {
+        float angleStep = 360f / segments;
+        Vector3 prevPoint = center + Vector3.forward * radius;
+        
+        for (int i = 1; i <= segments; i++)
+        {
+            float angle = angleStep * i;
+            Vector3 newPoint = center + Quaternion.Euler(0, angle, 0) * Vector3.forward * radius;
+            Gizmos.DrawLine(prevPoint, newPoint);
+            prevPoint = newPoint;
+        }
+    }
+
+    public bool IsIdle() => !isAiming;
+    public bool IsMoving() => false;
+    public bool IsAiming() => isAiming;
 }
+

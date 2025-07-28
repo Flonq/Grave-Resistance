@@ -58,7 +58,13 @@ public class GameManager : MonoBehaviour
         if (currentState == GameState.Playing)
         {
             gameTime += Time.deltaTime;
-            // ESC input kaldırıldı - PlayerController handle ediyor
+            
+            // 🔧 YENİ INPUT SYSTEM KULLAN
+            if (UnityEngine.InputSystem.Keyboard.current.escapeKey.wasPressedThisFrame)
+            {
+                Debug.Log("⌨️ ESC tuşuna basıldı!");
+                TogglePause();
+            }
         }
     }
     
@@ -104,8 +110,20 @@ public class GameManager : MonoBehaviour
     
     public void PauseGame()
     {
+        Debug.Log("PauseGame called!");
+        Debug.Log($"pauseMenu is null: {pauseMenu == null}");
+        
         SetGameState(GameState.Paused);
-        if (pauseMenu) pauseMenu.SetActive(true);
+        if (pauseMenu) 
+        {
+            pauseMenu.SetActive(true);
+            Debug.Log("Pause menu activated!");
+        }
+        else
+        {
+            Debug.LogError("Pause menu reference is missing!");
+        }
+        
         if (gameUI) gameUI.SetActive(false);
     }
     
@@ -228,23 +246,15 @@ public class GameManager : MonoBehaviour
     // Yeni fonksiyon ekle
     void HideAllMenus()
     {
-        // Unity 6.0 API - FindObjectsByType kullan
-        Canvas[] canvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
-        
-        foreach (Canvas canvas in canvases)
-        {
-            // Hide all pause-related canvases
-            if (canvas.name.Contains("Pause"))
-            {
-                canvas.gameObject.SetActive(false);
-            }
-        }
-        
-        // Find and hide menus in new scene
+        // Find and hide specific menus in new scene
         GameObject gameOverCanvas = GameObject.Find("GameOverCanvas");
         if (gameOverCanvas) gameOverCanvas.SetActive(false);
         
+        // Ensure game UI is active
         GameObject gameUI = GameObject.Find("GameUI");
         if (gameUI) gameUI.SetActive(true);
+        
+        // PausePanel'i başlangıçta kapalı tut
+        if (pauseMenu) pauseMenu.SetActive(false);
     }
 }

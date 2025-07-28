@@ -6,12 +6,15 @@ public class WeaponController : MonoBehaviour
     [Header("Weapon Settings")]
     public WeaponData currentWeapon;
     public Transform firePoint;
-    public Camera playerCamera; // MANUEL ASSIGNMENT
     public LayerMask enemyLayers = 1;
     
     [Header("Visual Effects")]
     public ParticleSystem muzzleFlash;
     public GameObject impactEffect;
+    
+    [Header("Camera References")]
+    public CameraSwitcher cameraSwitcher; // Kamera mode kontrolü
+    public GTAOrbitCamera tpsCamera; // TPS kamera referansı
     
     // Components
     private AudioSource audioSource;
@@ -22,18 +25,12 @@ public class WeaponController : MonoBehaviour
     
     void Start()
     {
-        // Try multiple ways to get camera
-        playerCamera = Camera.main;
-        
-        if (playerCamera == null)
-        {
-            playerCamera = FindFirstObjectByType<Camera>();
-        }
-        
-        if (playerCamera == null)
-        {
-            playerCamera = GetComponentInParent<Camera>();
-        }
+        // TPS kamera ve camera switcher bul
+        if (tpsCamera == null)
+            tpsCamera = FindFirstObjectByType<GTAOrbitCamera>();
+            
+        if (cameraSwitcher == null)
+            cameraSwitcher = FindFirstObjectByType<CameraSwitcher>();
         
         audioSource = GetComponent<AudioSource>();
         
@@ -44,7 +41,24 @@ public class WeaponController : MonoBehaviour
             currentWeapon.reserveAmmo = 48;
         }
         
-        Debug.Log($"Camera found: {playerCamera != null}");
+        Debug.Log($"CameraSwitcher found: {cameraSwitcher != null}");
+        Debug.Log($"TPS Camera found: {tpsCamera != null}");
+    }
+    
+    // AKTİF KAMERAYI AL
+    Camera GetActiveCamera()
+    {
+        if (cameraSwitcher == null) return Camera.main;
+        
+        switch (cameraSwitcher.currentMode)
+        {
+            case CameraSwitcher.CameraMode.FPS:
+                return cameraSwitcher.fpsCamera;
+            case CameraSwitcher.CameraMode.TPS:
+                return cameraSwitcher.tpsCamera;
+            default:
+                return Camera.main;
+        }
     }
     
     void Update()
@@ -72,23 +86,43 @@ public class WeaponController : MonoBehaviour
         // Audio
         if (audioSource != null && currentWeapon.fireSound != null)
             audioSource.PlayOneShot(currentWeapon.fireSound);
-        
     }
     
     void PerformRaycast()
     {
-        // Get shooting direction from camera center
-        Vector3 rayOrigin = playerCamera.transform.position;
-        Vector3 rayDirection = playerCamera.transform.forward;
+        Vector3 rayOrigin;
+        Vector3 rayDirection;
+        
+        // Aktif kamerayı al
+        Camera activeCamera = GetActiveCamera();
+        bool isTPSMode = cameraSwitcher != null && cameraSwitcher.currentMode == CameraSwitcher.CameraMode.TPS;
+        
+        if (activeCamera != null)
+        {
+            // HER İKİ MODDA DA: Aktif kameradan screen center ray
+            Ray centerRay = activeCamera.ScreenPointToRay(new Vector3(Screen.width / 2f, Screen.height / 2f, 0));
+            rayOrigin = centerRay.origin;
+            rayDirection = centerRay.direction;
+            
+            Debug.Log($"{(isTPSMode ? "TPS" : "FPS")} Mode: Shooting from {activeCamera.name} screen center");
+        }
+        else
+        {
+            // Fallback: Transform forward
+            rayOrigin = transform.position;
+            rayDirection = transform.forward;
+            
+            Debug.LogWarning("No active camera found! Using transform forward");
+        }
         
         RaycastHit hit;
         
         // Visualize the ray
-        Debug.DrawRay(rayOrigin, rayDirection * currentWeapon.range, Color.red, 0.1f);
+        Debug.DrawRay(rayOrigin, rayDirection * currentWeapon.range, Color.red, 0.5f);
         
         if (Physics.Raycast(rayOrigin, rayDirection, out hit, currentWeapon.range, enemyLayers))
         {
-            Debug.Log($"Hit: {hit.collider.name}");
+            Debug.Log($"Hit: {hit.collider.name} at {hit.point}");
             
             // Check if hit an enemy
             ZombieController zombie = hit.collider.GetComponent<ZombieController>();
@@ -103,6 +137,22 @@ public class WeaponController : MonoBehaviour
             {
                 GameObject impact = Instantiate(impactEffect, hit.point, Quaternion.LookRotation(hit.normal));
                 Destroy(impact, 2f);
+            }
+            
+            // TPS modunda firePoint'i hit noktasına çevir (görsel efekt için)
+            if (isTPSMode && firePoint != null)
+            {
+                Vector3 directionToHit = (hit.point - firePoint.position).normalized;
+                firePoint.LookAt(hit.point);
+            }
+        }
+        else
+        {
+            // Hiçbir şeye çarpmadı - firePoint'i ray yönüne çevir
+            if (isTPSMode && firePoint != null)
+            {
+                Vector3 targetPoint = rayOrigin + rayDirection * currentWeapon.range;
+                firePoint.LookAt(targetPoint);
             }
         }
     }
