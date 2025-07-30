@@ -38,6 +38,28 @@ public class PlayerController : MonoBehaviour
     [Header("Character Animation")]
     public CharacterAnimator characterAnimator;
     
+    [Header("FPS Aim Settings")]
+    public float aimZoomFOV = 30f; // Nişan alırken FOV
+    public float normalFOV = 60f; // Normal FOV
+    public float aimSmoothSpeed = 8f; // Zoom geçiş hızı
+    public float aimSensitivity = 5f; // Nişan alırken mouse hassasiyeti (normalden düşük)
+    public float normalSensitivity = 10f; // Normal mouse hassasiyeti
+    
+    [Header("TPS Camera Settings")]
+    public float tpsSensitivity = 2f; // TPS kamera için ayrı hassasiyet
+    
+    [Header("UI References")]
+    public GameObject crosshair;
+    
+    [Header("Recoil Settings")]
+    public float recoilMultiplier = 4f;        // Recoil çarpanı
+    public float horizontalRecoilMultiplier = 2f; // Horizontal recoil çarpanı
+    public float maxRecoilY = 30f;             // Maximum vertical recoil
+    public float maxRecoilX = 15f;             // Maximum horizontal recoil
+    public float recoverySpeed = 4f;           // Recovery hızı
+    public float minRecoverySpeed = 1f;        // Minimum recovery hızı
+    public float maxRecoverySpeed = 8f;        // Maximum recovery hızı
+    
     // Components
     private CharacterController controller;
     private PlayerInputActions inputActions;
@@ -56,6 +78,16 @@ public class PlayerController : MonoBehaviour
     private bool isAiming = false;
     private bool wasAiming = false; // Önceki frame'de aim alıyor muydu
     
+    private bool isAimingFPS = false;
+    private float currentFOV;
+    private float targetFOV;
+    private float currentSensitivity;
+    
+    // Recoil variables
+    private Vector2 currentRecoil = Vector2.zero;
+    private Vector2 targetRecoil = Vector2.zero;
+    private bool isRecoiling = false;
+    
     void Awake()
     {
         // Get components
@@ -66,8 +98,17 @@ public class PlayerController : MonoBehaviour
         if (tpsCamera == null)
             tpsCamera = FindFirstObjectByType<GTAOrbitCamera>();
         
-        // Initialize input
-        inputActions = new PlayerInputActions();
+        // Initialize input - null check ekle
+        try
+        {
+            inputActions = new PlayerInputActions();
+            Debug.Log("PlayerInputActions initialized successfully");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Failed to initialize PlayerInputActions: {e.Message}");
+            inputActions = null;
+        }
         
         // Cursor settings
         Cursor.lockState = CursorLockMode.Locked;
@@ -83,43 +124,68 @@ public class PlayerController : MonoBehaviour
         // Eğer yoksa oluştur
         if (characterAnimator == null)
             characterAnimator = gameObject.AddComponent<CharacterAnimator>();
+        
+        // YENİ: FOV ayarları
+        if (playerCamera != null)
+        {
+            currentFOV = normalFOV;
+            targetFOV = normalFOV;
+            playerCamera.fieldOfView = normalFOV;
+        }
+        
+        currentSensitivity = normalSensitivity;
     }
     
     void OnEnable()
     {
-        inputActions.Player.Enable();
-        
-        // Subscribe to input events
-        inputActions.Player.Move.performed += OnMove;
-        inputActions.Player.Move.canceled += OnMove;
-        inputActions.Player.Look.performed += OnLook;
-        inputActions.Player.Jump.performed += OnJump;
-        inputActions.Player.Run.performed += OnRun;
-        inputActions.Player.Run.canceled += OnRunEnd;
-        inputActions.Player.Crouch.performed += OnCrouch;
-        inputActions.Player.Fire.performed += OnFire;
-        // Aim event'lerini kaldırıyoruz - manuel kontrol yapacağız
-        inputActions.Player.Reload.performed += OnReload;
-        inputActions.Player.Pause.performed += OnPause;
-        inputActions.Player.SwitchCamera.performed += OnSwitchCamera;
+        // Input actions'ı kontrol et
+        if (inputActions != null)
+        {
+            inputActions.Player.Enable();
+            
+            // Subscribe to input events
+            inputActions.Player.Move.performed += OnMove;
+            inputActions.Player.Move.canceled += OnMove;
+            inputActions.Player.Look.performed += OnLook;
+            inputActions.Player.Jump.performed += OnJump;
+            inputActions.Player.Run.performed += OnRun;
+            inputActions.Player.Run.canceled += OnRunEnd;
+            inputActions.Player.Crouch.performed += OnCrouch;
+            inputActions.Player.Fire.performed += OnFire;
+            inputActions.Player.Reload.performed += OnReload;
+            inputActions.Player.Pause.performed += OnPause;
+            inputActions.Player.SwitchCamera.performed += OnSwitchCamera;
+        }
+        else
+        {
+            Debug.LogWarning("InputActions is null in PlayerController.OnEnable()");
+        }
     }
     
     void OnDisable()
     {
-        inputActions.Player.Disable();
-        
-        // Unsubscribe from input events
-        inputActions.Player.Move.performed -= OnMove;
-        inputActions.Player.Move.canceled -= OnMove;
-        inputActions.Player.Look.performed -= OnLook;
-        inputActions.Player.Jump.performed -= OnJump;
-        inputActions.Player.Run.performed -= OnRun;
-        inputActions.Player.Run.canceled -= OnRunEnd;
-        inputActions.Player.Crouch.performed -= OnCrouch;
-        inputActions.Player.Fire.performed -= OnFire;
-        inputActions.Player.Reload.performed -= OnReload;
-        inputActions.Player.Pause.performed -= OnPause;
-        inputActions.Player.SwitchCamera.performed -= OnSwitchCamera;
+        // Input actions'ı kontrol et
+        if (inputActions != null)
+        {
+            inputActions.Player.Disable();
+            
+            // Unsubscribe from input events
+            inputActions.Player.Move.performed -= OnMove;
+            inputActions.Player.Move.canceled -= OnMove;
+            inputActions.Player.Look.performed -= OnLook;
+            inputActions.Player.Jump.performed -= OnJump;
+            inputActions.Player.Run.performed -= OnRun;
+            inputActions.Player.Run.canceled -= OnRunEnd;
+            inputActions.Player.Crouch.performed -= OnCrouch;
+            inputActions.Player.Fire.performed -= OnFire;
+            inputActions.Player.Reload.performed -= OnReload;
+            inputActions.Player.Pause.performed -= OnPause;
+            inputActions.Player.SwitchCamera.performed -= OnSwitchCamera;
+        }
+        else
+        {
+            Debug.LogWarning("InputActions is null in PlayerController.OnDisable()");
+        }
     }
     
     void Update()
@@ -128,7 +194,9 @@ public class PlayerController : MonoBehaviour
         HandleLook();
         HandleGravity();
         HandleTPSRotation();
-        HandleAiming(); // YENİ: Manuel aim kontrolü
+        HandleAiming();
+        HandleFPSAim(); // YENİ: FPS aim kontrolü
+        HandleRecoilRecovery(); // YENİ: Recoil kurtarma
     }
     
     // YENİ METOD: Manuel aim kontrolü
@@ -179,8 +247,12 @@ public class PlayerController : MonoBehaviour
         // Normal FPS look (sadece FPS modunda)
         if (cameraSwitcher != null && cameraSwitcher.currentMode == CameraSwitcher.CameraMode.FPS)
         {
-            float mouseX = lookInput.x * mouseSensitivity * Time.deltaTime;
-            float mouseY = lookInput.y * mouseSensitivity * Time.deltaTime;
+            float mouseX = lookInput.x * currentSensitivity * Time.deltaTime;
+            float mouseY = lookInput.y * currentSensitivity * Time.deltaTime;
+            
+            // Recoil'i ekle
+            mouseX += currentRecoil.x * Time.deltaTime;
+            mouseY += currentRecoil.y * Time.deltaTime;
             
             // Rotate the player body horizontally
             transform.Rotate(Vector3.up * mouseX);
@@ -189,6 +261,15 @@ public class PlayerController : MonoBehaviour
             xRotation -= mouseY;
             xRotation = Mathf.Clamp(xRotation, -lookDownLimit, lookUpLimit);
             playerCamera.transform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
+        }
+        else
+        {
+            // TPS modunda TPS hassasiyetini kullan
+            float mouseX = lookInput.x * tpsSensitivity * Time.deltaTime;
+            float mouseY = lookInput.y * tpsSensitivity * Time.deltaTime;
+            
+            // TPS kamera rotasyonu (GTAOrbitCamera zaten kendi hassasiyetini kullanıyor)
+            // Burada sadece player rotasyonu için kullan
         }
         
         // Input'u sıfırla
@@ -222,6 +303,92 @@ public class PlayerController : MonoBehaviour
         }
     }
     
+    // YENİ: FPS Aim kontrolü
+    void HandleFPSAim()
+    {
+        // Sadece FPS modunda çalış
+        if (cameraSwitcher != null && cameraSwitcher.currentMode == CameraSwitcher.CameraMode.FPS)
+        {
+            // Sağ tık ile aim
+            bool aimInput = Mouse.current.rightButton.isPressed;
+            
+            if (aimInput != isAimingFPS)
+            {
+                isAimingFPS = aimInput;
+                
+                if (isAimingFPS)
+                {
+                    // Aim moduna geç
+                    targetFOV = aimZoomFOV;
+                    currentSensitivity = aimSensitivity;
+                    crosshair.SetActive(false);
+                    Debug.Log("FPS Aim ON - Sensitivity: " + currentSensitivity);
+                }
+                else
+                {
+                    // Normal moda geç
+                    targetFOV = normalFOV;
+                    currentSensitivity = normalSensitivity;
+                    crosshair.SetActive(true);
+                    Debug.Log("FPS Aim OFF - Sensitivity: " + currentSensitivity);
+                }
+            }
+            
+            // FOV'u smooth olarak güncelle
+            if (playerCamera != null)
+            {
+                currentFOV = Mathf.Lerp(currentFOV, targetFOV, aimSmoothSpeed * Time.deltaTime);
+                playerCamera.fieldOfView = currentFOV;
+            }
+        }
+        else
+        {
+            // TPS modunda normal hassasiyet
+            currentSensitivity = normalSensitivity;
+            
+            // TPS modunda FOV'u sabit tut
+            if (playerCamera != null)
+            {
+                playerCamera.fieldOfView = normalFOV;
+            }
+        }
+    }
+
+    // Recoil sistemi
+    public void ApplyRecoil(float verticalRecoil, float horizontalRecoil)
+    {
+        if (cameraSwitcher != null && cameraSwitcher.currentMode == CameraSwitcher.CameraMode.FPS)
+        {
+            // Rastgele horizontal recoil
+            float randomHorizontal = Random.Range(-horizontalRecoil, horizontalRecoil);
+            
+            // Recoil'i ekle (direkt ata değil, ekle)
+            currentRecoil.y += verticalRecoil * recoilMultiplier;
+            currentRecoil.x += randomHorizontal * horizontalRecoilMultiplier;
+            
+            // Maximum recoil'i sınırla
+            currentRecoil.y = Mathf.Clamp(currentRecoil.y, 0f, maxRecoilY);
+            currentRecoil.x = Mathf.Clamp(currentRecoil.x, -maxRecoilX, maxRecoilX);
+            
+            isRecoiling = true;
+        }
+    }
+
+    void HandleRecoilRecovery()
+    {
+        if (isRecoiling && currentRecoil.magnitude > 0.1f)
+        {
+            // Parabolik smooth - başta yavaş, sonra hızlı
+            float currentRecoverySpeed = Mathf.Lerp(minRecoverySpeed, maxRecoverySpeed, currentRecoil.magnitude / maxRecoilY);
+            currentRecoil = Vector2.Lerp(currentRecoil, Vector2.zero, currentRecoverySpeed * Time.deltaTime);
+        }
+        else
+        {
+            currentRecoil = Vector2.zero;
+            isRecoiling = false;
+        }
+    }
+
     void HandleGravity()
     {
         // Ground check
@@ -318,4 +485,5 @@ public class PlayerController : MonoBehaviour
     
     // Public getters
     public bool IsAiming() => isAiming;
+    public bool IsAimingFPS() => isAimingFPS;
 } 

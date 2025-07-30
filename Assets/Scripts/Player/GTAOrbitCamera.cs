@@ -14,7 +14,7 @@ public class GTAOrbitCamera : MonoBehaviour
     public float cameraRadius = 5f;          
     public float heightOffset = 1.5f;        
     public float pivotAngleOffset = 0f;      // ← YENİ! Pivot açı offset'i
-    public float sensitivity = 3f;
+    public float sensitivity = 1.0f; // Bu değeri düşür
     public float smoothTime = 0.3f;
     
     [Header("Aim Settings")]

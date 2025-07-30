@@ -17,9 +17,9 @@ MonoBehaviour:
   damage: 120
   range: 25
   fireRate: 1.2
-  maxAmmo: 6
-  currentAmmo: 6
-  reserveAmmo: 24
+  maxAmmo: 8
+  currentAmmo: 8
+  reserveAmmo: 40
   reloadTime: 2.5
   weaponPrefab: {fileID: 0}
   fireSound: {fileID: 0}
@@ -35,3 +35,7 @@ MonoBehaviour:
   pelletCount: 8
   spreadAngle: 15
   isShotgun: 1
+  verticalRecoil: 2
+  horizontalRecoil: 1
+  recoilRecoverySpeed: 5
+  maxRecoil: 10

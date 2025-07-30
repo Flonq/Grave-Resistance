@@ -18,8 +18,17 @@ public class WeaponManager : MonoBehaviour
     
     void Awake()
     {
-        // Initialize input
-        inputActions = new PlayerInputActions();
+        // Initialize input - null check ekle
+        try
+        {
+            inputActions = new PlayerInputActions();
+            Debug.Log("WeaponManager InputActions initialized successfully");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Failed to initialize WeaponManager InputActions: {e.Message}");
+            inputActions = null;
+        }
     }
     
     void Start()
@@ -34,17 +43,26 @@ public class WeaponManager : MonoBehaviour
     
     void OnEnable()
     {
-        inputActions.Player.Enable();
-        
-        // Subscribe to number key inputs
-        inputActions.Player.Weapon1.performed += OnWeapon1;
-        inputActions.Player.Weapon2.performed += OnWeapon2;
-        inputActions.Player.Weapon3.performed += OnWeapon3;
-        inputActions.Player.ScrollWeapon.performed += OnScrollWeapon;
+        // Input actions'ı kontrol et
+        if (inputActions != null)
+        {
+            inputActions.Player.Enable();
+            
+            // Subscribe to number key inputs
+            inputActions.Player.Weapon1.performed += OnWeapon1;
+            inputActions.Player.Weapon2.performed += OnWeapon2;
+            inputActions.Player.Weapon3.performed += OnWeapon3;
+            inputActions.Player.ScrollWeapon.performed += OnScrollWeapon;
+        }
+        else
+        {
+            Debug.LogWarning("InputActions is null in WeaponManager.OnEnable()");
+        }
     }
     
     void OnDisable()
     {
+        // Input actions'ı kontrol et
         if (inputActions != null)
         {
             inputActions.Player.Disable();
@@ -54,6 +72,10 @@ public class WeaponManager : MonoBehaviour
             inputActions.Player.Weapon2.performed -= OnWeapon2;
             inputActions.Player.Weapon3.performed -= OnWeapon3;
             inputActions.Player.ScrollWeapon.performed -= OnScrollWeapon;
+        }
+        else
+        {
+            Debug.LogWarning("InputActions is null in WeaponManager.OnDisable()");
         }
     }
     
@@ -103,7 +125,7 @@ public class WeaponManager : MonoBehaviour
         // Update weapon controller
         if (weaponController != null)
         {
-            weaponController.SetCurrentWeapon(newWeapon);
+            weaponController.SwitchWeapon(weaponIndex); // YENİ: SwitchWeapon kullan
         }
         
         // Fire event

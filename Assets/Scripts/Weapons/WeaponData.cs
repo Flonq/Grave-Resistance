@@ -41,6 +41,12 @@ public class WeaponData : ScriptableObject
     public int pelletCount = 8; // Kaç tane pellet atılacak
     public float spreadAngle = 15f; // Saçılma açısı (derece)
     public bool isShotgun = false; // Bu silah shotgun mu?
+
+    [Header("Recoil Settings")]
+    public float verticalRecoil = 2f;      // Yukarı recoil miktarı
+    public float horizontalRecoil = 1f;    // Sağa/sola recoil miktarı
+    public float recoilRecoverySpeed = 5f; // Recoil düzelme hızı
+    public float maxRecoil = 10f;          // Maximum recoil miktarı
 }
 
 public enum WeaponType

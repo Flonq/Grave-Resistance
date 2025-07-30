@@ -46,84 +46,73 @@ public class WeaponModel : MonoBehaviour
     public Vector3 boltPulledPosition = new Vector3(0, 0, -0.1f);
     public Vector3 boltReleasedPosition = new Vector3(0, 0, 0);
     
+    [Header("Aim Settings")]
+    public Vector3 normalPosition = new Vector3(0.4f, 0.1f, 0.8f); // Normal pozisyon
+    public Vector3 aimPosition = new Vector3(0.0f, -0.2f, 0.4f); // Aim pozisyonu
+    public float aimSmoothSpeed = 8f; // Pozisyon geçiş hızı
+
     // Private variables
     private bool isActive = false;
     private Vector3 originalMagPosition;
     private Vector3 originalBoltPosition;
-    private bool isReloading = false;
+    private Vector3 currentPosition;
+    private Vector3 targetPosition;
     
     void Start()
     {
-        // Weapon model'i başlangıçta gizle
-        SetActive(false);
-        
-        // Audio source'u otomatik bul
-        if (weaponAudioSource == null)
-            weaponAudioSource = GetComponent<AudioSource>();
-        
-        // YENİ: M4 component'lerini otomatik bul
-        FindM4Components();
-        
-        // Low Poly model kullanılıyorsa oluştur
-        if (useLowPolyModel)
+        // WeaponData'yı kontrol et
+        if (weaponData == null)
         {
-            CreatePlaceholder();
+            Debug.LogError("WeaponData is null in WeaponModel!");
+            return;
         }
+        
+        // Pozisyon değişkenlerini başlat
+        currentPosition = normalPosition;
+        targetPosition = normalPosition;
+        
+        // Silahı aktif et ve pozisyonunu ayarla
+        SetActive(true);
+        
+        // Debug: Pozisyon bilgilerini yazdır
+        Debug.Log($"WeaponModel Start - Name: {weaponData.weaponName}");
+        Debug.Log($"Normal Position: {normalPosition}");
+        Debug.Log($"Aim Position: {aimPosition}");
+        Debug.Log($"Current Position: {currentPosition}");
+        Debug.Log($"Transform Position: {transform.localPosition}");
+        Debug.Log($"Transform Scale: {transform.localScale}");
     }
     
     public void SetActive(bool active)
     {
         isActive = active;
-        gameObject.SetActive(active);
         
+        // YENİ DEBUG: SetActive çağrısı
+        Debug.Log($"WeaponModel SetActive: {active} for {weaponData?.weaponName}");
+        
+        // Renderer'ları bul ve aktif et
+        Renderer[] renderers = GetComponentsInChildren<Renderer>();
+        foreach (Renderer renderer in renderers)
+        {
+            renderer.enabled = active;
+            Debug.Log($"Renderer {renderer.name} set to: {active}");
+        }
+        
+        // MeshRenderer'ları da kontrol et
+        MeshRenderer[] meshRenderers = GetComponentsInChildren<MeshRenderer>();
+        foreach (MeshRenderer meshRenderer in meshRenderers)
+        {
+            meshRenderer.enabled = active;
+            Debug.Log($"MeshRenderer {meshRenderer.name} set to: {active}");
+        }
+        
+        // Pozisyonu ayarla
         if (active)
         {
-            // YENİ: Aktif olduğunda pozisyonu güncelle
-            if (weaponData != null)
-            {
-                SetWeaponPosition(weaponData.weaponName.ToLower());
-                Debug.Log($"Weapon activated: {weaponData.weaponName}");
-            }
-            
-            if (weaponAnimator != null)
-            {
-                weaponAnimator.Play(idleAnimationName);
-            }
+            SetWeaponPosition(weaponData?.weaponName ?? "unknown");
         }
     }
     
-    public void PlayFireAnimation()
-    {
-        if (!isActive || weaponAnimator == null) return;
-        
-        weaponAnimator.Play(fireAnimationName);
-        
-        // Muzzle flash
-        if (muzzleFlash != null)
-            muzzleFlash.Play();
-        
-        // Fire sound
-        if (weaponAudioSource != null && fireSound != null)
-            weaponAudioSource.PlayOneShot(fireSound);
-        
-        // Shell eject
-        if (shellEjectPrefab != null && shellEjectPoint != null)
-        {
-            GameObject shell = Instantiate(shellEjectPrefab, shellEjectPoint.position, shellEjectPoint.rotation);
-            Destroy(shell, 3f);
-        }
-    }
-    
-    public void PlayReloadAnimation()
-    {
-        if (!isActive || weaponAnimator == null) return;
-        
-        weaponAnimator.Play(reloadAnimationName);
-        
-        // Reload sound
-        if (weaponAudioSource != null && reloadSound != null)
-            weaponAudioSource.PlayOneShot(reloadSound);
-    }
     
     public void PlayEmptySound()
     {
@@ -149,27 +138,46 @@ public class WeaponModel : MonoBehaviour
     {
         Debug.Log($"Setting weapon position for: {weaponName}");
         
+        // Kamera modunu kontrol et
+        CameraSwitcher cameraSwitcher = FindFirstObjectByType<CameraSwitcher>();
+        bool isFPSMode = cameraSwitcher != null && cameraSwitcher.currentMode == CameraSwitcher.CameraMode.FPS;
+        
         // Silah tipine göre pozisyon ve rotasyon ayarla
-        switch (weaponName)
+        switch (weaponName.ToLower())
         {
             case "pistol":
-                transform.localPosition = new Vector3(0.4f, 0.1f, 0.8f);
-                transform.localRotation = Quaternion.Euler(0, 180, 0);
-                transform.localScale = new Vector3(2.0f, 2.0f, 2.0f);
-                break;
-                
             case "shotgun":
-                transform.localPosition = new Vector3(0.4f, 0.1f, 0.8f);
-                transform.localRotation = Quaternion.Euler(0, 180, 0);
-                transform.localScale = new Vector3(2.0f, 2.0f, 2.0f);
+            case "rifle":
+                // FPS modunda pozisyonu sabit tut
+                if (isFPSMode)
+                {
+                    transform.localPosition = normalPosition;
+                    transform.localRotation = Quaternion.Euler(0, 180, 0);
+                    transform.localScale = new Vector3(2.0f, 2.0f, 2.0f);
+                }
+                else
+                {
+                    // TPS modunda normal pozisyon
+                    transform.localPosition = normalPosition;
+                    transform.localRotation = Quaternion.Euler(0, 180, 0);
+                    transform.localScale = new Vector3(2.0f, 2.0f, 2.0f);
+                }
                 break;
                 
-            case "rifle":
-                transform.localPosition = new Vector3(0.4f, 0.1f, 0.8f);
+            default:
+                Debug.LogWarning($"Unknown weapon name: {weaponName}");
+                transform.localPosition = normalPosition;
                 transform.localRotation = Quaternion.Euler(0, 180, 0);
                 transform.localScale = new Vector3(2.0f, 2.0f, 2.0f);
                 break;
         }
+        
+        // Pozisyon değişkenlerini güncelle
+        currentPosition = normalPosition;
+        targetPosition = normalPosition;
+        
+        Debug.Log($"Weapon position set to: {normalPosition}");
+        Debug.Log($"FPS Mode: {isFPSMode}");
     }
 
     void CreatePlaceholder()
@@ -191,6 +199,8 @@ public class WeaponModel : MonoBehaviour
         // WeaponData'dan silah adını al
         string weaponName = weaponData != null ? weaponData.weaponName.ToLower() : "pistol";
         
+        Debug.Log($"Loading Low Poly model for: {weaponName}");
+        
         // Asset paketinden model yükle
         GameObject modelPrefab = LoadWeaponModelFromAssets(weaponName);
         
@@ -207,7 +217,7 @@ public class WeaponModel : MonoBehaviour
             // Muzzle point'i bul
             FindMuzzlePoint();
             
-            Debug.Log($"Low Poly model loaded: {weaponName}");
+            Debug.Log($"Low Poly model loaded successfully: {weaponName}");
         }
         else
         {
@@ -226,21 +236,38 @@ public class WeaponModel : MonoBehaviour
         {
             case "pistol":
                 modelPrefab = Resources.Load<GameObject>("Weapons/M1911");
+                if (modelPrefab == null)
+                    modelPrefab = Resources.Load<GameObject>("M1911");
                 break;
                 
             case "shotgun":
                 modelPrefab = Resources.Load<GameObject>("Weapons/Bennelli_M4");
+                if (modelPrefab == null)
+                    modelPrefab = Resources.Load<GameObject>("Bennelli_M4");
                 break;
                 
             case "rifle":
                 modelPrefab = Resources.Load<GameObject>("Weapons/M4_8");
+                if (modelPrefab == null)
+                    modelPrefab = Resources.Load<GameObject>("M4_8");
                 break;
         }
         
         // Eğer bulunamazsa debug mesajı
         if (modelPrefab == null)
         {
-            Debug.LogWarning($"Model not found for: {weaponName}");
+            Debug.LogWarning($"Model not found for: {weaponName}. Trying alternative paths...");
+            
+            // Alternatif yollar dene
+            modelPrefab = Resources.Load<GameObject>(weaponName);
+            if (modelPrefab == null)
+            {
+                Debug.LogError($"No model found for weapon: {weaponName}");
+            }
+        }
+        else
+        {
+            Debug.Log($"Model loaded successfully: {weaponName}");
         }
         
         return modelPrefab;
@@ -347,121 +374,75 @@ public class WeaponModel : MonoBehaviour
         Debug.Log("M4 components found and initialized!");
     }
 
-    // YENİ: Reload animasyon başlat
-    public void StartReloadAnimation()
+    // Eski PlayFireAnimation() fonksiyonunu geri ekleyin:
+    public void PlayFireAnimation()
     {
-        if (isReloading) return;
+        if (!isActive || weaponAnimator == null) return;
         
-        isReloading = true;
-        StartCoroutine(ReloadAnimationSequence());
-    }
-
-    // YENİ: Reload animasyon sırası
-    System.Collections.IEnumerator ReloadAnimationSequence()
-    {
-        Debug.Log("Starting M4 reload animation...");
+        weaponAnimator.Play(fireAnimationName);
         
-        // 1. Mag'i çıkar
-        yield return StartCoroutine(EjectMagazine());
+        // Muzzle flash
+        if (muzzleFlash != null)
+            muzzleFlash.Play();
         
-        // 2. Bolt'u geri çek
-        yield return StartCoroutine(PullBolt());
+        // Fire sound
+        if (weaponAudioSource != null && fireSound != null)
+            weaponAudioSource.PlayOneShot(fireSound);
         
-        // 3. Yeni mag'i tak
-        yield return StartCoroutine(InsertMagazine());
-        
-        // 4. Bolt'u serbest bırak
-        yield return StartCoroutine(ReleaseBolt());
-        
-        isReloading = false;
-        Debug.Log("M4 reload animation completed!");
-    }
-
-    // YENİ: Magazine çıkarma animasyonu
-    System.Collections.IEnumerator EjectMagazine()
-    {
-        if (magTransform == null) yield break;
-        
-        Debug.Log("Ejecting magazine...");
-        
-        Vector3 startPos = magTransform.localPosition;
-        Vector3 endPos = magEjectPosition;
-        float duration = 1f / magEjectSpeed;
-        
-        for (float t = 0; t < duration; t += Time.deltaTime)
+        // Shell eject
+        if (shellEjectPrefab != null && shellEjectPoint != null)
         {
-            float progress = t / duration;
-            magTransform.localPosition = Vector3.Lerp(startPos, endPos, progress);
-            yield return null;
+            GameObject shell = Instantiate(shellEjectPrefab, shellEjectPoint.position, shellEjectPoint.rotation);
+            Destroy(shell, 3f);
         }
-        
-        magTransform.localPosition = endPos;
-        Debug.Log("Magazine ejected!");
     }
 
-    // YENİ: Magazine takma animasyonu
-    System.Collections.IEnumerator InsertMagazine()
+    // Eski PlayReloadAnimation() fonksiyonunu geri ekleyin:
+    public void PlayReloadAnimation()
     {
-        if (magTransform == null) yield break;
+        if (!isActive || weaponAnimator == null) return;
         
-        Debug.Log("Inserting magazine...");
+        weaponAnimator.Play(reloadAnimationName);
         
-        Vector3 startPos = magEjectPosition;
-        Vector3 endPos = magInsertPosition;
-        float duration = 1f / magInsertSpeed;
-        
-        for (float t = 0; t < duration; t += Time.deltaTime)
-        {
-            float progress = t / duration;
-            magTransform.localPosition = Vector3.Lerp(startPos, endPos, progress);
-            yield return null;
-        }
-        
-        magTransform.localPosition = endPos;
-        Debug.Log("Magazine inserted!");
+        // Reload sound
+        if (weaponAudioSource != null && reloadSound != null)
+            weaponAudioSource.PlayOneShot(reloadSound);
     }
 
-    // YENİ: Bolt çekme animasyonu
-    System.Collections.IEnumerator PullBolt()
+    // YENİ: Aim pozisyonu güncelleme fonksiyonu
+    public void UpdateAimPosition(bool isAiming)
     {
-        if (boltTransform == null) yield break;
-        
-        Debug.Log("Pulling bolt...");
-        
-        Vector3 startPos = boltTransform.localPosition;
-        Vector3 endPos = boltPulledPosition;
-        float duration = 1f / boltPullSpeed;
-        
-        for (float t = 0; t < duration; t += Time.deltaTime)
+        if (isAiming)
         {
-            float progress = t / duration;
-            boltTransform.localPosition = Vector3.Lerp(startPos, endPos, progress);
-            yield return null;
+            targetPosition = aimPosition;
         }
-        
-        boltTransform.localPosition = endPos;
-        Debug.Log("Bolt pulled!");
+        else
+        {
+            targetPosition = normalPosition;
+        }
     }
 
-    // YENİ: Bolt serbest bırakma animasyonu
-    System.Collections.IEnumerator ReleaseBolt()
+    // YENİ: Pozisyon güncelleme fonksiyonu
+    public void UpdatePosition()
     {
-        if (boltTransform == null) yield break;
-        
-        Debug.Log("Releasing bolt...");
-        
-        Vector3 startPos = boltPulledPosition;
-        Vector3 endPos = boltReleasedPosition;
-        float duration = 1f / boltReleaseSpeed;
-        
-        for (float t = 0; t < duration; t += Time.deltaTime)
+        // Kamera modunu kontrol et
+        CameraSwitcher cameraSwitcher = FindFirstObjectByType<CameraSwitcher>();
+        if (cameraSwitcher != null && cameraSwitcher.currentMode == CameraSwitcher.CameraMode.FPS)
         {
-            float progress = t / duration;
-            boltTransform.localPosition = Vector3.Lerp(startPos, endPos, progress);
-            yield return null;
+            // FPS modunda pozisyonu hiç değiştirme - sabit tut!
+            // Sadece rotasyonu sabit tut
+            transform.localRotation = Quaternion.Euler(0, 180, 0);
+            transform.localScale = new Vector3(2.0f, 2.0f, 2.0f);
         }
-        
-        boltTransform.localPosition = endPos;
-        Debug.Log("Bolt released!");
+        else
+        {
+            // TPS modunda pozisyonu smooth olarak güncelle
+            currentPosition = Vector3.Lerp(currentPosition, targetPosition, aimSmoothSpeed * Time.deltaTime);
+            transform.localPosition = currentPosition;
+            
+            // Rotasyonu sabit tut
+            transform.localRotation = Quaternion.Euler(0, 180, 0);
+            transform.localScale = new Vector3(2.0f, 2.0f, 2.0f);
+        }
     }
 } 

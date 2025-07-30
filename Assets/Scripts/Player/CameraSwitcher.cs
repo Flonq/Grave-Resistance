@@ -39,7 +39,7 @@ public class CameraSwitcher : MonoBehaviour
                 break;
         }
         
-        // Silah pozisyonunu güncelle
+        // YENİ: Silah pozisyonunu güncelle
         UpdateWeaponPosition();
     }
     
