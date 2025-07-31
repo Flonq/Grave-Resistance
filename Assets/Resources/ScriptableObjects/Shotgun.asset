@@ -19,7 +19,7 @@ MonoBehaviour:
   fireRate: 1.2
   maxAmmo: 8
   currentAmmo: 8
-  reserveAmmo: 40
+  reserveAmmo: 48
   reloadTime: 2.5
   weaponPrefab: {fileID: 0}
   fireSound: {fileID: 0}

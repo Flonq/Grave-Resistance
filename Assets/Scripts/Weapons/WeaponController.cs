@@ -29,7 +29,6 @@ public class WeaponController : MonoBehaviour
     // Components
     private AudioSource audioSource;
     private float nextFireTime;
-    private bool isReloading;
     
     // Weapon instances
     private GameObject currentWeaponInstance;
@@ -51,7 +50,10 @@ public class WeaponController : MonoBehaviour
     
     private Vector3 currentWeaponOffset; // Mevcut offset
     private float aimSmoothSpeed = 12f;   // Aim geçiş hızı
-    
+
+    [Header("M4 Reload Animation")]
+    public Animator weaponAnimator; // M4'nin Animator'ı
+
     void Start()
     {
         // Get components
@@ -59,7 +61,6 @@ public class WeaponController : MonoBehaviour
         
         // Initialize shooting variables
         nextFireTime = 0f;
-        isReloading = false;
         
         // Get camera references
         if (cameraSwitcher == null)
@@ -69,32 +70,15 @@ public class WeaponController : MonoBehaviour
             playerCamera = GetComponentInChildren<Camera>();
         
         // Initialize weapon system
-        if (availableWeapons != null && availableWeapons.Length > 0)
+        if (availableWeapons.Length > 0)
         {
-            currentWeapon = availableWeapons[0]; // İlk silahı seç
-            Debug.Log($"Initial weapon set to: {currentWeapon.weaponName}");
+            currentWeapon = availableWeapons[0];
+            CreateWeaponInstance(0);
+            Debug.Log("Initial weapon set to: " + currentWeapon.weaponName);
         }
-        
-        // Reset only reserve ammo to default values
-        if (availableWeapons != null)
-        {
-            foreach (WeaponData weapon in availableWeapons)
-            {
-                // Current ammo'yu koru, sadece reserve ammo'yu yenile
-                // weapon.reserveAmmo = weapon.reserveAmmo; // Bu satırı sil
-                // weapon.currentAmmo = weapon.maxAmmo; // Bu satırı sil veya yoruma al
-            }
-        }
-        
-        // Create first weapon
-        CreateWeaponInstance(0);
-        
-        // Initialize camera reference
-        if (tpsCamera == null)
-            tpsCamera = FindFirstObjectByType<GTAOrbitCamera>();
     }
     
-    void LateUpdate()
+    void Update()
     {
         HandleFireModeToggle();
         HandleAutoFire();
@@ -174,26 +158,26 @@ public class WeaponController : MonoBehaviour
     
     // YENİ: Silah pozisyonunu güncelle
     public void UpdateWeaponPosition()
-{
-    if (currentWeaponInstance == null) return;
-    
-    CameraSwitcher cameraSwitcher = FindFirstObjectByType<CameraSwitcher>();
-    if (cameraSwitcher == null) return;
-    
-    if (cameraSwitcher.currentMode == CameraSwitcher.CameraMode.FPS)
     {
-        // FPS modunda circle sistemi kullan
-        UpdateFPSWeaponPosition();
-    }
-    else
-    {
-        // TPS modunda player'a child olarak ekle
-        if (currentWeaponInstance.transform.parent != transform)
+        if (currentWeaponInstance == null) return;
+        
+        CameraSwitcher cameraSwitcher = FindFirstObjectByType<CameraSwitcher>();
+        if (cameraSwitcher == null) return;
+        
+        if (cameraSwitcher.currentMode == CameraSwitcher.CameraMode.FPS)
         {
-            currentWeaponInstance.transform.SetParent(transform, false);
+            // FPS modunda circle sistemi kullan
+            UpdateFPSWeaponPosition();
+        }
+        else
+        {
+            // TPS modunda player'a child olarak ekle
+            if (currentWeaponInstance.transform.parent != transform)
+            {
+                currentWeaponInstance.transform.SetParent(transform, false);
+            }
         }
     }
-}
     
     private void UpdateFPSWeaponPosition()
     {
@@ -400,21 +384,20 @@ public class WeaponController : MonoBehaviour
     
     public void StartReload()
     {
-        if (isReloading || currentWeapon.currentAmmo >= currentWeapon.maxAmmo || currentWeapon.reserveAmmo <= 0)
+        if (CanReload())
         {
-            Debug.Log("Reload blocked!");
-            return;
+            // YENİ: Sadece Animator kullan
+            if (weaponAnimator != null)
+            {
+                weaponAnimator.SetTrigger("StartReload");
+                Debug.Log("Reload animasyonu başladı! (Animator)");
+            }
+            
+            // Reload süresini bekle
+            Invoke(nameof(FinishReload), currentWeapon.reloadTime);
+            
+            Debug.Log("Reload başladı!");
         }
-        
-        isReloading = true;
-        
-        // Start reload coroutine
-        Invoke(nameof(FinishReload), currentWeapon.reloadTime);
-        
-        // Weapon model reload animation
-        WeaponModel weaponModel = currentWeaponInstance?.GetComponent<WeaponModel>();
-        if (weaponModel != null)
-            weaponModel.PlayReloadAnimation();
     }
     
     void FinishReload()
@@ -425,7 +408,6 @@ public class WeaponController : MonoBehaviour
         currentWeapon.currentAmmo += ammoToReload;
         currentWeapon.reserveAmmo -= ammoToReload;
         
-        isReloading = false;
         Debug.Log($"Reload complete! Ammo: {currentWeapon.currentAmmo}/{currentWeapon.maxAmmo}");
     }
     
@@ -433,7 +415,6 @@ public class WeaponController : MonoBehaviour
     {
         return currentWeapon != null && 
                currentWeapon.currentAmmo > 0 && 
-               !isReloading && 
                Time.time >= nextFireTime;
     }
     
@@ -441,8 +422,7 @@ public class WeaponController : MonoBehaviour
     {
         return currentWeapon != null && 
                currentWeapon.currentAmmo < currentWeapon.maxAmmo && 
-               currentWeapon.reserveAmmo > 0 && 
-               !isReloading;
+               currentWeapon.reserveAmmo > 0;
     }
     
     Camera GetActiveCamera()
@@ -476,5 +456,4 @@ public class WeaponController : MonoBehaviour
     public int GetCurrentAmmo() => currentWeapon != null ? currentWeapon.currentAmmo : 0;
     public int GetMaxAmmo() => currentWeapon != null ? currentWeapon.maxAmmo : 0;
     public int GetReserveAmmo() => currentWeapon != null ? currentWeapon.reserveAmmo : 0;
-    public bool IsReloading() => isReloading;
 }

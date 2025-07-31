@@ -19,7 +19,7 @@ MonoBehaviour:
   fireRate: 0.15
   maxAmmo: 30
   currentAmmo: 30
-  reserveAmmo: 120
+  reserveAmmo: 53
   reloadTime: 3
   weaponPrefab: {fileID: 0}
   fireSound: {fileID: 0}
@@ -31,7 +31,7 @@ MonoBehaviour:
   modelScale: {x: 1, y: 1, z: 1}
   fireAnimationSpeed: 1
   reloadAnimationSpeed: 1
-  fireMode: 0
+  fireMode: 1
   pelletCount: 8
   spreadAngle: 15
   isShotgun: 0

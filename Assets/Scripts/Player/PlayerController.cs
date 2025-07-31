@@ -52,13 +52,15 @@ public class PlayerController : MonoBehaviour
     public GameObject crosshair;
     
     [Header("Recoil Settings")]
-    public float recoilMultiplier = 4f;        // Recoil çarpanı
-    public float horizontalRecoilMultiplier = 2f; // Horizontal recoil çarpanı
-    public float maxRecoilY = 30f;             // Maximum vertical recoil
-    public float maxRecoilX = 15f;             // Maximum horizontal recoil
-    public float recoverySpeed = 4f;           // Recovery hızı
-    public float minRecoverySpeed = 1f;        // Minimum recovery hızı
-    public float maxRecoverySpeed = 8f;        // Maximum recovery hızı
+    public float recoilMultiplier = 4f;
+    public float horizontalRecoilMultiplier = 2f;
+    public float maxRecoilY = 30f;
+    public float maxRecoilX = 15f;
+    public float recoveryStrength = 0.3f; // YENİ: Recovery gücü (0.3f = %30)
+    
+    [Header("Recoil Curve Settings")]
+    public AnimationCurve recoilCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f); // Inspector'da ayarlanabilir
+    public float recoilDuration = 0.3f; // Recoil'in tamamlanma süresi
     
     // Components
     private CharacterController controller;
@@ -87,6 +89,9 @@ public class PlayerController : MonoBehaviour
     private Vector2 currentRecoil = Vector2.zero;
     private Vector2 targetRecoil = Vector2.zero;
     private bool isRecoiling = false;
+    private float recoilTimer = 0f; // YENİ: Recoil timer
+    private Vector2 recoilStartPosition; // YENİ: Başlangıç pozisyonu
+    private bool isInRecoveryPhase = false; // YENİ: Recovery fazında mı?
     
     void Awake()
     {
@@ -362,30 +367,69 @@ public class PlayerController : MonoBehaviour
             // Rastgele horizontal recoil
             float randomHorizontal = Random.Range(-horizontalRecoil, horizontalRecoil);
             
-            // Recoil'i ekle (direkt ata değil, ekle)
-            currentRecoil.y += verticalRecoil * recoilMultiplier;
-            currentRecoil.x += randomHorizontal * horizontalRecoilMultiplier;
+            // YENİ: Recoil değerlerini çok daha büyük yap
+            Vector2 newRecoil = new Vector2(
+                randomHorizontal * horizontalRecoilMultiplier * 50f, // 50f çarpanı
+                verticalRecoil * recoilMultiplier * 100f // 100f çarpanı
+            );
             
-            // Maximum recoil'i sınırla
-            currentRecoil.y = Mathf.Clamp(currentRecoil.y, 0f, maxRecoilY);
-            currentRecoil.x = Mathf.Clamp(currentRecoil.x, -maxRecoilX, maxRecoilX);
+            // Recoil'i başlat
+            recoilStartPosition = currentRecoil;
+            targetRecoil = currentRecoil + newRecoil;
+            targetRecoil.y = Mathf.Clamp(targetRecoil.y, 0f, maxRecoilY);
+            targetRecoil.x = Mathf.Clamp(targetRecoil.x, -maxRecoilX, maxRecoilX);
             
+            // Timer'ı sıfırla ve recovery fazını kapat
+            recoilTimer = 0f;
             isRecoiling = true;
+            isInRecoveryPhase = false;
+            
+            Debug.Log($"Recoil başladı! Target: {targetRecoil}");
         }
     }
 
     void HandleRecoilRecovery()
     {
-        if (isRecoiling && currentRecoil.magnitude > 0.1f)
+        if (isRecoiling)
         {
-            // Parabolik smooth - başta yavaş, sonra hızlı
-            float currentRecoverySpeed = Mathf.Lerp(minRecoverySpeed, maxRecoverySpeed, currentRecoil.magnitude / maxRecoilY);
-            currentRecoil = Vector2.Lerp(currentRecoil, Vector2.zero, currentRecoverySpeed * Time.deltaTime);
-        }
-        else
-        {
-            currentRecoil = Vector2.zero;
-            isRecoiling = false;
+            recoilTimer += Time.deltaTime;
+            
+            if (!isInRecoveryPhase)
+            {
+                // İlk recoil fazı - yukarı gidiyor
+                float normalizedTime = recoilTimer / recoilDuration;
+                if (normalizedTime >= 1f)
+                {
+                    // İlk recoil bitti, recovery fazına geç
+                    isInRecoveryPhase = true;
+                    recoilStartPosition = currentRecoil;
+                    recoilTimer = 0f;
+                    Debug.Log($"Recovery başladı! Start: {recoilStartPosition}");
+                }
+                else
+                {
+                    float curveValue = recoilCurve.Evaluate(normalizedTime);
+                    currentRecoil = Vector2.Lerp(recoilStartPosition, targetRecoil, curveValue);
+                }
+            }
+            else
+            {
+                // Recovery fazı - negatif recoil uygula
+                float recoveryTime = recoilTimer / (recoilDuration * 2f);
+                Vector2 oldRecoil = currentRecoil;
+                
+                // YENİ: Negatif recoil değerini ayarlanabilir yap
+                Vector2 negativeRecoil = new Vector2(0f, -targetRecoil.y * recoveryStrength); // 0.3f = recovery gücü
+                currentRecoil = Vector2.Lerp(recoilStartPosition, negativeRecoil, recoveryTime);
+                
+                if (recoveryTime >= 1f)
+                {
+                    currentRecoil = Vector2.zero;
+                    isRecoiling = false;
+                    isInRecoveryPhase = false;
+                    Debug.Log("Recovery bitti!");
+                }
+            }
         }
     }
 

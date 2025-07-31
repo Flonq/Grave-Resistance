@@ -3126,6 +3126,7 @@ MonoBehaviour:
   pistolAimOffset: {x: 0, y: -0.09, z: 0.4}
   shotgunAimOffset: {x: 0, y: -0.06, z: 0.5}
   rifleAimOffset: {x: 0, y: -0.2195, z: 0.5}
+  weaponAnimator: {fileID: 0}
 --- !u!114 &898343085
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3179,6 +3180,36 @@ MonoBehaviour:
   normalSensitivity: 10
   tpsSensitivity: 3
   crosshair: {fileID: 1591938973}
+  recoilMultiplier: 5
+  horizontalRecoilMultiplier: 0.05
+  maxRecoilY: 30
+  maxRecoilX: 15
+  recoveryStrength: 1.4
+  recoilCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0.26418614
+      value: 4.4335046
+      inSlope: -256.43814
+      outSlope: -256.43814
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.07215075
+    - serializedVersion: 3
+      time: 0.28831276
+      value: 0.7681758
+      inSlope: -18.139406
+      outSlope: -18.139406
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.40640724
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  recoilDuration: 0.15
 --- !u!143 &898343087
 CharacterController:
   m_ObjectHideFlags: 0
