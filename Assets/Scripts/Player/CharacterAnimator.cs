@@ -48,7 +48,6 @@ public class CharacterAnimator : MonoBehaviour
         if (Camera.main != null)
             head = Camera.main.transform;
         
-        Debug.Log("Character body parts setup completed!");
     }
     
     void Update()

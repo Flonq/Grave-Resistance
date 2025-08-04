@@ -57,7 +57,6 @@ public class WaveManager : MonoBehaviour
         int zombiesToSpawn = zombiesPerWave + (currentWave - 1) * waveMultiplier;
         
         UpdateWaveUI();
-        Debug.Log($"Wave {currentWave} started! Spawning {zombiesToSpawn} zombies");
         
         // Fire events
         OnWaveChanged?.Invoke(currentWave);
@@ -88,13 +87,11 @@ public class WaveManager : MonoBehaviour
         // Zombie spawn et
         GameObject zombie = Instantiate(zombiePrefab, spawnPoint.position, spawnPoint.rotation);
         
-        Debug.Log($"Zombie spawned at {spawnPoint.name}");
     }
     
     public void OnZombieDeath()
     {
         zombiesAlive--;
-        Debug.Log($"Zombie died! Remaining: {zombiesAlive}");
         
         // YENİ: UI güncelle
         OnZombieCountChanged?.Invoke(zombiesAlive);
@@ -110,8 +107,6 @@ public class WaveManager : MonoBehaviour
     {
         isWaveActive = false;
         currentWave++;
-        
-        Debug.Log($"Wave {currentWave - 1} completed!");
         
         // Start break between waves
         StartCoroutine(WaveBreak());

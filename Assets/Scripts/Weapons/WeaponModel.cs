@@ -74,13 +74,6 @@ public class WeaponModel : MonoBehaviour
         // Silahı aktif et ve pozisyonunu ayarla
         SetActive(true);
         
-        // Debug: Pozisyon bilgilerini yazdır
-        Debug.Log($"WeaponModel Start - Name: {weaponData.weaponName}");
-        Debug.Log($"Normal Position: {normalPosition}");
-        Debug.Log($"Aim Position: {aimPosition}");
-        Debug.Log($"Current Position: {currentPosition}");
-        Debug.Log($"Transform Position: {transform.localPosition}");
-        Debug.Log($"Transform Scale: {transform.localScale}");
     }
     
     public void SetActive(bool active)

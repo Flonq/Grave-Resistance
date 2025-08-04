@@ -46,37 +46,31 @@ public class PauseManager : MonoBehaviour
     
     void Start()
     {
-        Debug.Log("PauseManager Start() method called!"); // 👈 YENİ DEBUG
         
         // Button event'lerini bağla
         if (resumeButton) 
         {
             resumeButton.onClick.AddListener(ResumeGame);
-            Debug.Log("Resume button connected");
         }
         if (settingsButton) 
         {
             settingsButton.onClick.AddListener(OpenSettings);
-            Debug.Log("Settings button connected");
         }
         if (mainMenuButton) 
         {
             mainMenuButton.onClick.AddListener(GoToMainMenu);
-            Debug.Log("Main menu button connected");
         }
         
         // Settings UI events
         if (backButton) 
         {
             backButton.onClick.AddListener(CloseSettings);
-            Debug.Log("Back button event connected");
         }
         
         if (masterVolumeSlider) 
         {
             masterVolumeSlider.onValueChanged.RemoveAllListeners();
             masterVolumeSlider.onValueChanged.AddListener(OnMasterVolumeChanged);
-            Debug.Log("Volume slider event connected");
         }
         
         // Panel'leri başlangıçta kapat
@@ -85,7 +79,6 @@ public class PauseManager : MonoBehaviour
         
         LoadSettings();
         
-        Debug.Log("All PauseManager setup completed!");
     }
     
     // Resume Game
@@ -119,19 +112,16 @@ public class PauseManager : MonoBehaviour
             if (pausePanel != null)
             {
                 pausePanel.SetActive(false);
-                Debug.Log("PausePanel hidden");
             }
             
             // 🔧 SETTINGS PANEL'İ GÖSTER
             settingsPanel.SetActive(true);
-            Debug.Log("SettingsPanel activated");
             
             // 🔧 ANIMATOR'I KAPAT (Alpha sorunu için)
             Animator animator = settingsPanel.GetComponent<Animator>();
             if (animator != null)
             {
                 animator.enabled = false;
-                Debug.Log("Settings Animator disabled");
             }
             
             // 🔧 CANVAS GROUP'U AYARLA
@@ -141,13 +131,8 @@ public class PauseManager : MonoBehaviour
                 canvasGroup.alpha = 1f;
                 canvasGroup.interactable = true;
                 canvasGroup.blocksRaycasts = true;
-                Debug.Log("CanvasGroup configured: Alpha=1, Interactable=True");
             }
             
-            // 🔧 TEMPORARY TIME SCALE FIX'İ KALDIR!
-            // StartCoroutine(TemporaryTimeScaleFix()); ← BU SATIRI SİL!
-            
-            Debug.Log("Settings opened successfully");
         }
     }
 
@@ -158,7 +143,6 @@ public class PauseManager : MonoBehaviour
         
         if (settingsPanel != null)
         {
-            Debug.Log("Closing Settings Panel");
             
             // 🔧 SETTINGS PANEL'İ GİZLE
             settingsPanel.SetActive(false);
@@ -167,7 +151,6 @@ public class PauseManager : MonoBehaviour
             if (pausePanel != null)
             {
                 pausePanel.SetActive(true);
-                Debug.Log("PausePanel restored");
             }
             
             SaveSettings();
@@ -182,7 +165,6 @@ public class PauseManager : MonoBehaviour
         {
             settingsPanel.SetActive(false);
             SaveSettings();
-            Debug.Log("Settings Panel closed");
         }
     }
     
@@ -322,7 +304,6 @@ public class PauseManager : MonoBehaviour
             FindFirstObjectByType<WaveManager>().enabled = false;
         }
         
-        Debug.Log("Game objects manually paused");
     }
 
     // 🔧 YENİ: Oyun nesnelerini tekrar aktif et  
@@ -356,7 +337,6 @@ public class PauseManager : MonoBehaviour
             FindFirstObjectByType<WaveManager>().enabled = true;
         }
         
-        Debug.Log("Game objects resumed");
     }
 
     // 🔧 MANUEL UI CLICK HANDLING
@@ -380,14 +360,12 @@ public class PauseManager : MonoBehaviour
             // Volume Slider kontrolü
             if (masterVolumeSlider != null && IsMouseOverUI(masterVolumeSlider.gameObject, mousePos))
             {
-                Debug.Log("Manual Volume Slider click detected");
                 HandleVolumeSliderClick(mousePos);
             }
             
             // Back Button kontrolü
             if (backButton != null && IsMouseOverUI(backButton.gameObject, mousePos))
             {
-                Debug.Log("Manual Back Button click detected");
                 CloseSettings();
             }
             

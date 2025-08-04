@@ -49,10 +49,13 @@ public class WeaponController : MonoBehaviour
     public Vector3 rifleAimOffset = new Vector3(0.0f, -0.15f, 0.3f);
     
     private Vector3 currentWeaponOffset; // Mevcut offset
-    private float aimSmoothSpeed = 12f;   // Aim geçiş hızı
+    private Vector3 currentWeaponVelocity = Vector3.zero;
+    private Vector3 currentWeaponPositionVelocity = Vector3.zero; // YENİ: Pozisyon için ayrı velocity
+    private Quaternion currentWeaponRotationVelocity = Quaternion.identity;
 
-    [Header("M4 Reload Animation")]
-    public Animator weaponAnimator; // M4'nin Animator'ı
+    [Header("Smooth Settings")]
+    [Range(5f, 25f)]
+    public float smoothSpeed = 15f; // Smooth hızı
 
     void Start()
     {
@@ -75,19 +78,29 @@ public class WeaponController : MonoBehaviour
             currentWeapon = availableWeapons[0];
             CreateWeaponInstance(0);
             Debug.Log("Initial weapon set to: " + currentWeapon.weaponName);
+            
+            // YENİ: Başlangıçta silah pozisyonunu ayarla
+            UpdateWeaponPosition();
+            
+            // YENİ: Silahı görünür yap
+            if (currentWeaponInstance != null)
+            {
+                currentWeaponInstance.SetActive(true);
+                Debug.Log("Initial weapon activated and positioned");
+            }
         }
     }
     
-    void Update()
+    void LateUpdate() // Update() yerine LateUpdate() kullan
     {
         HandleFireModeToggle();
         HandleAutoFire();
         
-        // FPS modunda silah pozisyonunu güncelle
+        // Her zaman silah pozisyonunu güncelle (FPS ve TPS için)
         CameraSwitcher cameraSwitcher = FindFirstObjectByType<CameraSwitcher>();
-        if (cameraSwitcher != null && cameraSwitcher.currentMode == CameraSwitcher.CameraMode.FPS)
+        if (cameraSwitcher != null)
         {
-            UpdateFPSWeaponPosition();
+            UpdateWeaponPosition();
         }
     }
     
@@ -175,18 +188,18 @@ public class WeaponController : MonoBehaviour
             if (currentWeaponInstance.transform.parent != transform)
             {
                 currentWeaponInstance.transform.SetParent(transform, false);
+                // TPS modunda silahı görünür yap
+                currentWeaponInstance.SetActive(true);
             }
         }
     }
-    
+
     private void UpdateFPSWeaponPosition()
     {
         if (currentWeaponInstance == null || playerCamera == null) return;
 
-        // Aim durumunu kontrol et
         bool isAiming = Mouse.current.rightButton.isPressed;
 
-        // Mevcut silaha göre pozisyon seç
         Vector3 targetNormalPosition;
         Vector3 targetAimOffset;
         
@@ -210,24 +223,23 @@ public class WeaponController : MonoBehaviour
                 break;
         }
 
-        // Aim durumuna göre hedef pozisyonu belirle
         Vector3 targetPosition = isAiming ? targetAimOffset : targetNormalPosition;
 
-        // Smooth geçiş ile pozisyonu güncelle
-        currentWeaponOffset = Vector3.Lerp(currentWeaponOffset, targetPosition, aimSmoothSpeed * Time.deltaTime);
+        // Sadece offset için smooth damping (nişan alma geçişi için)
+        currentWeaponOffset = Vector3.SmoothDamp(currentWeaponOffset, targetPosition, ref currentWeaponVelocity, 1f / smoothSpeed);
 
-        // Direkt pozisyon hesapla ve ata
         Vector3 weaponPosition = playerCamera.transform.position +
             playerCamera.transform.forward * currentWeaponOffset.z +
             playerCamera.transform.right * currentWeaponOffset.x +
             playerCamera.transform.up * currentWeaponOffset.y;
 
+        // Direkt pozisyon ataması (sabit kalması için)
         currentWeaponInstance.transform.position = weaponPosition;
 
-        // Silahın rotasyonunu kameraya göre ayarla + 180 derece döndür
-        currentWeaponInstance.transform.rotation = playerCamera.transform.rotation * Quaternion.Euler(0, 180, 0);
+        // Direkt rotasyon ataması (sabit kalması için)
+        Quaternion targetRotation = playerCamera.transform.rotation * Quaternion.Euler(0, 180, 0);
+        currentWeaponInstance.transform.rotation = targetRotation;
 
-        // Silahı kameraya child yapma - dünya koordinatlarında tut
         if (currentWeaponInstance.transform.parent != null)
         {
             currentWeaponInstance.transform.SetParent(null);
@@ -386,13 +398,6 @@ public class WeaponController : MonoBehaviour
     {
         if (CanReload())
         {
-            // YENİ: Sadece Animator kullan
-            if (weaponAnimator != null)
-            {
-                weaponAnimator.SetTrigger("StartReload");
-                Debug.Log("Reload animasyonu başladı! (Animator)");
-            }
-            
             // Reload süresini bekle
             Invoke(nameof(FinishReload), currentWeapon.reloadTime);
             

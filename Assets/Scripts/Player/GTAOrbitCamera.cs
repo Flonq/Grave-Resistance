@@ -165,7 +165,6 @@ public class GTAOrbitCamera : MonoBehaviour
         if (isAiming != aiming)
         {
             isAiming = aiming;
-            Debug.Log($"Concentric Camera Aiming: {isAiming}");
         }
     }
     
@@ -183,7 +182,6 @@ public class GTAOrbitCamera : MonoBehaviour
     public void SetPivotOffset(float angleOffset)
     {
         pivotAngleOffset = angleOffset;
-        Debug.Log($"Pivot Angle Offset set to: {angleOffset}°");
     }
 
     // Önceden tanımlı pozisyonlar

@@ -1,5 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+// YENİ: PlayerInputActions için using static ekle
+using static PlayerInputActions;
 
 public class PlayerController : MonoBehaviour
 {
@@ -14,10 +16,24 @@ public class PlayerController : MonoBehaviour
     public float lookUpLimit = 80f;
     public float lookDownLimit = 80f;
     
+    [Header("Slide Settings")]
+    public float slideSpeed = 12f; // Slide hızı
+    public float slideDuration = 1f; // Slide süresi
+    public float slideHeight = 0.5f; // Slide sırasında yükseklik
+    public float slideSmoothSpeed = 5f; // Slide geçiş hızı
+
     [Header("Crouch Settings")]
     public float crouchHeight = 1f;
     public float standHeight = 2f;
-    public float crouchSpeed = 2.5f;
+    public float crouchSpeed = 1.5f;
+    public float crouchSmoothSpeed = 2f; // YENİ: 0.5f'den 2f'e çıkardık - daha hızlı eğilme
+
+    // YENİ: Orijinal değerleri kaydet - SİL
+    // private float originalYPosition;
+    // private Vector3 originalCenter;
+    
+    // YENİ: Orijinal pozisyonu kaydet
+    // private float originalYPosition;
     
     [Header("Combat")]
     public WeaponController weaponController;
@@ -62,6 +78,13 @@ public class PlayerController : MonoBehaviour
     public AnimationCurve recoilCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f); // Inspector'da ayarlanabilir
     public float recoilDuration = 0.3f; // Recoil'in tamamlanma süresi
     
+    // Slide variables - BUNLARI SİL
+    // private bool isSliding = false;
+    // private float slideTimer = 0f;
+    // private float originalHeight;
+    // private float originalFOV;
+    // private Vector3 slideDirection;
+    
     // Components
     private CharacterController controller;
     private PlayerInputActions inputActions;
@@ -71,10 +94,25 @@ public class PlayerController : MonoBehaviour
     private Vector3 velocity;
     private Vector2 moveInput;
     private Vector2 lookInput;
-    private bool isRunning;
-    private bool isCrouching;
+    private bool isRunning = false;
+    private bool isCrouching = false; // YENİ: Eğilme durumu
+    private bool isSliding = false; // YENİ: Slide durumu
     private float currentSpeed;
     private float xRotation = 0f;
+    
+    // YENİ: Eğilme değişkenleri
+    private float targetHeight;
+    private float currentHeight;
+    private Vector3 targetCenter;
+    private Vector3 currentCenter;
+    private float originalHeight; // YENİ: Orijinal yüksekliği kaydet
+    private Vector3 originalCenter; // YENİ: Orijinal center'ı kaydet
+    
+    // Slide değişkenleri
+    private float slideTimer = 0f;
+    private Vector3 slideDirection = Vector3.zero;
+    private float slideTargetHeight;
+    private Vector3 slideTargetCenter;
     
     // TPS Aiming
     private bool isAiming = false;
@@ -106,7 +144,7 @@ public class PlayerController : MonoBehaviour
         // Initialize input - null check ekle
         try
         {
-            inputActions = new PlayerInputActions();
+        inputActions = new PlayerInputActions();
             Debug.Log("PlayerInputActions initialized successfully");
         }
         catch (System.Exception e)
@@ -139,27 +177,52 @@ public class PlayerController : MonoBehaviour
         }
         
         currentSensitivity = normalSensitivity;
+        
+        // YENİ: Eğilme sistemini başlat
+        InitializeCrouchSystem();
+    }
+
+    // YENİ: Eğilme sistemini başlat
+    void InitializeCrouchSystem()
+    {
+        if (controller != null)
+        {
+            // YENİ: Orijinal değerleri kaydet
+            originalHeight = controller.height;
+            originalCenter = controller.center;
+            
+            // Başlangıç değerleri - Orijinal değerleri kullan
+            targetHeight = originalHeight;
+            currentHeight = originalHeight;
+            targetCenter = originalCenter;
+            currentCenter = originalCenter;
+            
+            // Eğilme durumunu sıfırla
+            isCrouching = false;
+            
+        }
     }
     
     void OnEnable()
     {
         // Input actions'ı kontrol et
         if (inputActions != null)
-        {
-            inputActions.Player.Enable();
-            
-            // Subscribe to input events
-            inputActions.Player.Move.performed += OnMove;
-            inputActions.Player.Move.canceled += OnMove;
-            inputActions.Player.Look.performed += OnLook;
-            inputActions.Player.Jump.performed += OnJump;
-            inputActions.Player.Run.performed += OnRun;
-            inputActions.Player.Run.canceled += OnRunEnd;
-            inputActions.Player.Crouch.performed += OnCrouch;
-            inputActions.Player.Fire.performed += OnFire;
-            inputActions.Player.Reload.performed += OnReload;
-            inputActions.Player.Pause.performed += OnPause;
-            inputActions.Player.SwitchCamera.performed += OnSwitchCamera;
+    {
+        inputActions.Player.Enable();
+        
+        // Subscribe to input events
+        inputActions.Player.Move.performed += OnMove;
+        inputActions.Player.Move.canceled += OnMove;
+        inputActions.Player.Look.performed += OnLook;
+        inputActions.Player.Jump.performed += OnJump;
+        inputActions.Player.Run.performed += OnRun;
+        inputActions.Player.Run.canceled += OnRunEnd;
+            inputActions.Player.Crouch.performed += OnCrouch; // YENİ: Eğilme input'u
+        inputActions.Player.Fire.performed += OnFire;
+        inputActions.Player.Reload.performed += OnReload;
+        inputActions.Player.Pause.performed += OnPause;
+        inputActions.Player.SwitchCamera.performed += OnSwitchCamera;
+        inputActions.Player.Slide.performed += OnSlide; // YENİ: Slide input'u
         }
         else
         {
@@ -171,21 +234,22 @@ public class PlayerController : MonoBehaviour
     {
         // Input actions'ı kontrol et
         if (inputActions != null)
-        {
-            inputActions.Player.Disable();
-            
-            // Unsubscribe from input events
-            inputActions.Player.Move.performed -= OnMove;
-            inputActions.Player.Move.canceled -= OnMove;
-            inputActions.Player.Look.performed -= OnLook;
-            inputActions.Player.Jump.performed -= OnJump;
-            inputActions.Player.Run.performed -= OnRun;
-            inputActions.Player.Run.canceled -= OnRunEnd;
-            inputActions.Player.Crouch.performed -= OnCrouch;
-            inputActions.Player.Fire.performed -= OnFire;
-            inputActions.Player.Reload.performed -= OnReload;
-            inputActions.Player.Pause.performed -= OnPause;
-            inputActions.Player.SwitchCamera.performed -= OnSwitchCamera;
+    {
+        inputActions.Player.Disable();
+        
+        // Unsubscribe from input events
+        inputActions.Player.Move.performed -= OnMove;
+        inputActions.Player.Move.canceled -= OnMove;
+        inputActions.Player.Look.performed -= OnLook;
+        inputActions.Player.Jump.performed -= OnJump;
+        inputActions.Player.Run.performed -= OnRun;
+        inputActions.Player.Run.canceled -= OnRunEnd;
+            inputActions.Player.Crouch.performed -= OnCrouch; // YENİ: Eğilme input'u
+        inputActions.Player.Fire.performed -= OnFire;
+        inputActions.Player.Reload.performed -= OnReload;
+        inputActions.Player.Pause.performed -= OnPause;
+        inputActions.Player.SwitchCamera.performed -= OnSwitchCamera;
+        inputActions.Player.Slide.performed -= OnSlide; // YENİ: Slide input'u
         }
         else
         {
@@ -200,8 +264,10 @@ public class PlayerController : MonoBehaviour
         HandleGravity();
         HandleTPSRotation();
         HandleAiming();
-        HandleFPSAim(); // YENİ: FPS aim kontrolü
-        HandleRecoilRecovery(); // YENİ: Recoil kurtarma
+        HandleFPSAim();
+        HandleRecoilRecovery();
+        HandleCrouch(); // YENİ: Eğilme işlemi
+        HandleSlide(); // YENİ: Slide işlemi
     }
     
     // YENİ METOD: Manuel aim kontrolü
@@ -220,7 +286,6 @@ public class PlayerController : MonoBehaviour
                 tpsCamera.SetAiming(isAiming);
             }
             
-            Debug.Log($"Aim mode changed: {(isAiming ? "ON" : "OFF")}");
             
             wasAiming = currentlyAiming;
         }
@@ -229,22 +294,41 @@ public class PlayerController : MonoBehaviour
     void HandleMovement()
     {
         // Calculate current speed
-        if (isCrouching)
+        if (isSliding)
+        {
+            currentSpeed = slideSpeed; // Slide sırasında slide hızı
+        }
+        else if (isCrouching)
+        {
             currentSpeed = crouchSpeed;
+        }
         else if (isRunning && !isAiming)
+        {
             currentSpeed = runSpeed;
+        }
         else
+        {
             currentSpeed = walkSpeed;
+        }
         
-        // Aim alırken yavaşla
-        if (isAiming)
+        // Aim alırken yavaşla (slide sırasında değil)
+        if (isAiming && !isSliding)
             currentSpeed *= 0.5f;
         
         // Calculate movement direction
         Vector3 move = transform.right * moveInput.x + transform.forward * moveInput.y;
         
-        // Apply movement
-        controller.Move(move * currentSpeed * Time.deltaTime);
+        // Apply movement (slide sırasında hareket HandleSlide'da yapılıyor)
+        if (!isSliding)
+        {
+            controller.Move(move * currentSpeed * Time.deltaTime);
+        }
+        
+        // Hareket kesilince koşmayı durdur
+        if (moveInput.magnitude < 0.1f)
+        {
+            isRunning = false;
+        }
     }
     
     void HandleLook()
@@ -290,7 +374,7 @@ public class PlayerController : MonoBehaviour
                 Vector3 cameraForward = tpsCamera.transform.forward;
                 cameraForward.y = 0;
                 cameraForward = cameraForward.normalized;
-
+                
                 if (cameraForward.magnitude > 0.1f)
                 {
                     Quaternion targetRotation = Quaternion.LookRotation(cameraForward);
@@ -327,7 +411,6 @@ public class PlayerController : MonoBehaviour
                     targetFOV = aimZoomFOV;
                     currentSensitivity = aimSensitivity;
                     crosshair.SetActive(false);
-                    Debug.Log("FPS Aim ON - Sensitivity: " + currentSensitivity);
                 }
                 else
                 {
@@ -335,7 +418,6 @@ public class PlayerController : MonoBehaviour
                     targetFOV = normalFOV;
                     currentSensitivity = normalSensitivity;
                     crosshair.SetActive(true);
-                    Debug.Log("FPS Aim OFF - Sensitivity: " + currentSensitivity);
                 }
             }
             
@@ -384,7 +466,6 @@ public class PlayerController : MonoBehaviour
             isRecoiling = true;
             isInRecoveryPhase = false;
             
-            Debug.Log($"Recoil başladı! Target: {targetRecoil}");
         }
     }
 
@@ -404,7 +485,6 @@ public class PlayerController : MonoBehaviour
                     isInRecoveryPhase = true;
                     recoilStartPosition = currentRecoil;
                     recoilTimer = 0f;
-                    Debug.Log($"Recovery başladı! Start: {recoilStartPosition}");
                 }
                 else
                 {
@@ -427,12 +507,78 @@ public class PlayerController : MonoBehaviour
                     currentRecoil = Vector2.zero;
                     isRecoiling = false;
                     isInRecoveryPhase = false;
-                    Debug.Log("Recovery bitti!");
                 }
             }
         }
     }
 
+    // YENİ: Slide işlemi
+    void HandleSlide()
+    {
+        if (isSliding)
+        {
+            slideTimer += Time.deltaTime;
+            
+            // Slide süresi doldu mu?
+            if (slideTimer >= slideDuration)
+            {
+                EndSlide();
+            }
+            else
+            {
+                // Slide sırasında hareket
+                Vector3 slideMovement = slideDirection * slideSpeed * Time.deltaTime;
+                controller.Move(slideMovement);
+            }
+        }
+    }
+
+    // YENİ: Slide başlat
+    void StartSlide()
+    {
+        if (!isRunning || isSliding || isCrouching) return;
+        
+        isSliding = true;
+        slideTimer = 0f;
+        
+        // Slide yönünü belirle (hareket yönü veya bakış yönü)
+        if (moveInput.magnitude > 0.1f)
+        {
+            slideDirection = (transform.right * moveInput.x + transform.forward * moveInput.y).normalized;
+        }
+        else
+        {
+            slideDirection = transform.forward;
+        }
+        
+        // Slide yüksekliğini ayarla
+        slideTargetHeight = slideHeight;
+        slideTargetCenter = new Vector3(0, slideHeight / 2, 0);
+        
+        Debug.Log("Slide başladı!");
+    }
+
+    // YENİ: Slide bitir - GÜNCELLENDİ
+    void EndSlide()
+    {
+        isSliding = false;
+        slideTimer = 0f;
+        
+        // YENİ: Slide bittikten sonra koşmayı durdur
+        isRunning = false;
+        
+        // Normal yüksekliğe dön
+        slideTargetHeight = originalHeight;
+        slideTargetCenter = originalCenter;
+        
+        Debug.Log("Slide bitti! Koşma durduruldu.");
+    }
+
+    // BUNLARI SİL
+    // void HandleSlide() { ... }
+    // void StartSlide() { ... }
+    // void EndSlide() { ... }
+    
     void HandleGravity()
     {
         // Ground check
@@ -467,33 +613,141 @@ public class PlayerController : MonoBehaviour
     
     void OnRun(InputAction.CallbackContext context)
     {
-        isRunning = true;
+        // YENİ: Eğiliyken koşma başlatma
+        if (context.performed && !isCrouching && !isSliding)
+        {
+            isRunning = !isRunning; // Toggle koşma durumu
+        }
     }
     
     void OnRunEnd(InputAction.CallbackContext context)
     {
-        isRunning = false;
+        // YENİ: Bu fonksiyonu kullanmıyoruz (toggle sistemi için)
+        // Boş bırak veya sil
     }
     
+    // BUNLARI SİL
+    // void OnCrouch(InputAction.CallbackContext context) { ... }
+    // void ToggleCrouch() { ... }
+    // System.Collections.IEnumerator FixPositionAfterFrame() { ... }
+
+    // YENİ: Eğilme input event - GÜNCELLENDİ
     void OnCrouch(InputAction.CallbackContext context)
     {
-        ToggleCrouch();
+        if (context.performed)
+        {
+            // YENİ: Koşarken Ctrl basılırsa slide yap
+            if (isRunning && !isSliding && !isCrouching)
+            {
+                StartSlide();
+            }
+            // YENİ: Koşmazken Ctrl basılırsa eğilme yap
+            else if (!isRunning && !isSliding)
+            {
+                ToggleCrouch();
+            }
+        }
     }
     
+    // YENİ: Eğilme toggle (güncellendi)
     void ToggleCrouch()
     {
+        // Slide sırasında eğilme yapma
+        if (isSliding) return;
+        
+        isCrouching = !isCrouching;
+        
         if (isCrouching)
         {
-            controller.height = standHeight;
-            isCrouching = false;
+            // Eğilme moduna geç
+            targetHeight = crouchHeight;
+            targetCenter = new Vector3(0, crouchHeight / 2, 0);
         }
         else
         {
-            controller.height = crouchHeight;
-            isCrouching = true;
+            // Normal moda geç
+            targetHeight = originalHeight;
+            targetCenter = originalCenter;
         }
     }
 
+    // YENİ: Eğilme işlemi (güncellendi)
+    void HandleCrouch()
+    {
+        if (controller == null) return;
+        
+        // Slide sırasında farklı hedef değerler kullan
+        float targetHeight = isSliding ? slideTargetHeight : this.targetHeight;
+        Vector3 targetCenter = isSliding ? slideTargetCenter : this.targetCenter;
+        
+        // YENİ: Smooth geçiş yerine daha stabil bir yaklaşım
+        float heightDifference = Mathf.Abs(currentHeight - targetHeight);
+        float centerDifference = Vector3.Distance(currentCenter, targetCenter);
+        
+        // Eğer hedef değerlere çok yakınsa, direkt ata
+        if (heightDifference < 0.01f && centerDifference < 0.01f)
+        {
+            currentHeight = targetHeight;
+            currentCenter = targetCenter;
+        }
+        else
+        {
+            // YENİ: Smooth geçiş - doğrudan crouchSmoothSpeed kullan
+            float smoothSpeed = isSliding ? slideSmoothSpeed : crouchSmoothSpeed;
+            currentHeight = Mathf.MoveTowards(currentHeight, targetHeight, smoothSpeed * Time.deltaTime);
+            currentCenter = Vector3.MoveTowards(currentCenter, targetCenter, smoothSpeed * Time.deltaTime);
+        }
+        
+        // Controller'ı güncelle
+        controller.height = currentHeight;
+        controller.center = currentCenter;
+    }
+
+    // YENİ: Karakter modelinin scale'ini düzelt
+    void FixCharacterModelScale(bool isNormalSize)
+    {
+        // Farklı olası yolları dene
+        Transform[] possibleModels = {
+            transform.Find("Player"),
+            transform.Find("Character"),
+            transform.Find("Model"),
+            transform.Find("Body"),
+            transform.GetChild(0) // İlk child
+        };
+        
+        foreach (Transform model in possibleModels)
+        {
+            if (model != null)
+            {
+                if (isNormalSize)
+                {
+                    model.localScale = Vector3.one;
+                }
+                else
+                {
+                    model.localScale = new Vector3(1f, 0.7f, 1f);
+                }
+            }
+        }
+        
+        // YENİ: Tüm child'ları da kontrol et
+        foreach (Transform child in transform)
+        {
+            if (child.GetComponent<Renderer>() != null || child.GetComponent<SkinnedMeshRenderer>() != null)
+            {
+                if (isNormalSize)
+                {
+                    child.localScale = Vector3.one;
+        }
+        else
+        {
+                    child.localScale = new Vector3(1f, 0.7f, 1f);
+                }
+            }
+        }
+    }
+
+    // YENİ: OnFire fonksiyonunu geri ekle
     void OnFire(InputAction.CallbackContext context)
     {
         if (context.performed && weaponController != null)
@@ -523,11 +777,31 @@ public class PlayerController : MonoBehaviour
         if (cameraSwitcher != null)
         {
             cameraSwitcher.ToggleCameraMode();
-            Debug.Log($"Camera switched to: {cameraSwitcher.currentMode}");
         }
     }
+    
+    // YENİ: Slide input event - SİL veya boş bırak
+    void OnSlide(InputAction.CallbackContext context)
+    {
+        // YENİ: Bu fonksiyonu artık kullanmıyoruz
+        // Slide işlemi OnCrouch içinde yapılıyor
+    }
+    
+    // YENİ: Bir frame sonra pozisyonu düzelt
+    // System.Collections.IEnumerator FixPositionAfterFrame()
+    // {
+    //     yield return new WaitForEndOfFrame();
+        
+    //     Vector3 newPosition = transform.position;
+    //     newPosition.y = originalYPosition;
+    //     transform.position = newPosition;
+        
+    //     Debug.Log($"Pozisyon düzeltildi: {transform.position.y}");
+    // }
     
     // Public getters
     public bool IsAiming() => isAiming;
     public bool IsAimingFPS() => isAimingFPS;
+    public bool IsCrouching() => isCrouching; // YENİ: Eğilme durumu getter'ı
+    public bool IsSliding() => isSliding; // YENİ: Slide durumu getter'ı
 } 

@@ -1,5 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+// YENİ: PlayerInputActions için using static ekle
+using static PlayerInputActions;
 
 public class WeaponManager : MonoBehaviour
 {
@@ -131,7 +133,6 @@ public class WeaponManager : MonoBehaviour
         // Fire event
         OnWeaponChanged?.Invoke(newWeapon, currentWeaponIndex);
         
-        Debug.Log($"Switched to: {newWeapon.weaponName}");
     }
     
     public void NextWeapon()
