@@ -52,7 +52,7 @@ public class PlayerController : MonoBehaviour
     public float maxBodyAngle = 45f;
     
     [Header("Character Animation")]
-    public CharacterAnimator characterAnimator;
+    public Animator characterAnimator;
     
     [Header("FPS Aim Settings")]
     public float aimZoomFOV = 30f; // Nişan alırken FOV
@@ -162,11 +162,11 @@ public class PlayerController : MonoBehaviour
     {
         // Character animator'ı otomatik bul
         if (characterAnimator == null)
-            characterAnimator = GetComponent<CharacterAnimator>();
+            characterAnimator = GetComponentInChildren<Animator>();
         
         // Eğer yoksa oluştur
         if (characterAnimator == null)
-            characterAnimator = gameObject.AddComponent<CharacterAnimator>();
+            characterAnimator = gameObject.AddComponent<Animator>();
         
         // YENİ: FOV ayarları
         if (playerCamera != null)
@@ -268,6 +268,9 @@ public class PlayerController : MonoBehaviour
         HandleRecoilRecovery();
         HandleCrouch(); // YENİ: Eğilme işlemi
         HandleSlide(); // YENİ: Slide işlemi
+        
+        // Animasyon parametrelerini güncelle
+        UpdateAnimations();
     }
     
     // YENİ METOD: Manuel aim kontrolü
@@ -291,12 +294,14 @@ public class PlayerController : MonoBehaviour
         }
     }
     
+    // Crouch ve Slide sırasında da normal animasyonlar çalışsın
+    // Sadece hızı azalt
     void HandleMovement()
     {
         // Calculate current speed
         if (isSliding)
         {
-            currentSpeed = slideSpeed; // Slide sırasında slide hızı
+            currentSpeed = slideSpeed;
         }
         else if (isCrouching)
         {
@@ -311,14 +316,14 @@ public class PlayerController : MonoBehaviour
             currentSpeed = walkSpeed;
         }
         
-        // Aim alırken yavaşla (slide sırasında değil)
+        // Aim alırken yavaşla
         if (isAiming && !isSliding)
             currentSpeed *= 0.5f;
         
         // Calculate movement direction
         Vector3 move = transform.right * moveInput.x + transform.forward * moveInput.y;
         
-        // Apply movement (slide sırasında hareket HandleSlide'da yapılıyor)
+        // Apply movement (sadece bizim input sistemimiz)
         if (!isSliding)
         {
             controller.Move(move * currentSpeed * Time.deltaTime);
@@ -804,4 +809,21 @@ public class PlayerController : MonoBehaviour
     public bool IsAimingFPS() => isAimingFPS;
     public bool IsCrouching() => isCrouching; // YENİ: Eğilme durumu getter'ı
     public bool IsSliding() => isSliding; // YENİ: Slide durumu getter'ı
+
+    void UpdateAnimations()
+    {
+        if (characterAnimator == null) return;
+        
+        // Hareket hızını hesapla
+        float speed = new Vector2(moveInput.x, moveInput.y).magnitude;
+        
+        // Sadece mevcut animasyonlar için parametreler
+        characterAnimator.SetFloat("Speed", speed);
+        characterAnimator.SetBool("IsRunning", isRunning);
+        characterAnimator.SetBool("IsGrounded", controller.isGrounded);
+        characterAnimator.SetBool("IsJumping", !controller.isGrounded && velocity.y > 0);
+        
+        // Debug için log
+        Debug.Log($"Speed: {speed}, Running: {isRunning}, Grounded: {controller.isGrounded}, Jumping: {!controller.isGrounded && velocity.y > 0}");
+    }
 } 
