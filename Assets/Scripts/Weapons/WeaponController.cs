@@ -56,7 +56,7 @@ public class WeaponController : MonoBehaviour
     [Header("Smooth Settings")]
     [Range(5f, 25f)]
     public float smoothSpeed = 15f; // Smooth hızı
-
+    
     void Start()
     {
         // Get components
@@ -309,7 +309,7 @@ public class WeaponController : MonoBehaviour
         // Visual and audio effects
         if (muzzleFlash != null)
             muzzleFlash.Play();
-            
+        
         if (audioSource != null && currentWeapon.fireSound != null)
             audioSource.PlayOneShot(currentWeapon.fireSound);
             

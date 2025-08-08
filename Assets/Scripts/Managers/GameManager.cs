@@ -62,7 +62,6 @@ public class GameManager : MonoBehaviour
             // 🔧 YENİ INPUT SYSTEM KULLAN
             if (UnityEngine.InputSystem.Keyboard.current.escapeKey.wasPressedThisFrame)
             {
-                Debug.Log("⌨️ ESC tuşuna basıldı!");
                 TogglePause();
             }
         }
@@ -110,14 +109,12 @@ public class GameManager : MonoBehaviour
     
     public void PauseGame()
     {
-        Debug.Log("PauseGame called!");
-        Debug.Log($"pauseMenu is null: {pauseMenu == null}");
         
         SetGameState(GameState.Paused);
         if (pauseMenu) 
         {
             pauseMenu.SetActive(true);
-            Debug.Log("Pause menu activated!");
+
         }
         else
         {
@@ -181,7 +178,6 @@ public class GameManager : MonoBehaviour
             {
                 string newText = $"Kills: {killCount}\nScore: {playerScore}\nTime: {GetFormattedTime()}";
                 statsComponent.text = newText;
-                Debug.Log($"Game Over Stats Updated: {newText}");
             }
         }
         else
@@ -194,18 +190,14 @@ public class GameManager : MonoBehaviour
     public void AddScore(int points)
     {
         playerScore += points;
-        Debug.Log($"=== SCORE ADDED: +{points}, Total: {playerScore} ===");
         OnScoreChanged?.Invoke(playerScore);
-        Debug.Log($"OnScoreChanged event fired: {playerScore}");
     }
     
     public void AddKill()
     {
         killCount++;
-        Debug.Log($"=== KILL ADDED: {killCount} ===");
         AddScore(100); // 100 points per kill
         OnKillCountChanged?.Invoke(killCount);
-        Debug.Log($"OnKillCountChanged event fired: {killCount}");
     }
     
     public void RestartGame()
