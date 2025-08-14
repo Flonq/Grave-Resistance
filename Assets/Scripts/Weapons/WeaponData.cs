@@ -38,9 +38,9 @@ public class WeaponData : ScriptableObject
     public FireMode fireMode = FireMode.Single;
 
     [Header("Shotgun Spread Settings")]
-    public int pelletCount = 8; // Kaç tane pellet atılacak
-    public float spreadAngle = 15f; // Saçılma açısı (derece)
-    public bool isShotgun = false; // Bu silah shotgun mu?
+    public int pelletCount = 8;
+    public float spreadAngle = 15f; // Saçılma açısı
+    public bool isShotgun = false;
 
     [Header("Recoil Settings")]
     public float verticalRecoil = 2f;      // Yukarı recoil miktarı

@@ -50,17 +50,12 @@ public class GTAOrbitCamera : MonoBehaviour
 
     void Start()
     {
-        // Orijinal değerleri kaydet
         originalPivotRadius = pivotRadius;
         originalCameraRadius = cameraRadius;
         originalSmoothTime = smoothTime;
-        
-        // Player'ın başlangıç yönünü al ve pivot offset'i ekle
         if (target != null)
         {
-            horizontalAngle = target.eulerAngles.y + 45f;  // ← 45° offset (sağ omuz için)
-            
-            // Player layer'ını collision'dan çıkar
+            horizontalAngle = target.eulerAngles.y + 45f;  // 45 offset
             int playerLayer = target.gameObject.layer;
             collisionLayers = collisionLayers & ~(1 << playerLayer);
         }
@@ -77,18 +72,16 @@ public class GTAOrbitCamera : MonoBehaviour
     
     void HandleInput()
     {
-        // Mouse input al
         Vector2 mouseInput = Mouse.current.delta.ReadValue();
         float scrollInput = Mouse.current.scroll.ReadValue().y;
-        
-        // SENKRON AÇI GÜNCELLEMESİ - İkisi de aynı hızda döner!
+        // İkisinin de aynı hızda dönmesi
         horizontalAngle += mouseInput.x * sensitivity * Time.deltaTime;
         verticalAngle -= mouseInput.y * sensitivity * Time.deltaTime;
         
-        // Dikey açıyı sınırla
+        // Dikey açı sınırı
         verticalAngle = Mathf.Clamp(verticalAngle, -30f, 60f);
         
-        // Zoom (aim modunda değilse)
+        // Zoom
         if (!isAiming)
         {
             cameraRadius = Mathf.Clamp(cameraRadius - scrollInput * 0.2f, 2f, 10f);

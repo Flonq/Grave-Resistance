@@ -145,7 +145,6 @@ public class PlayerController : MonoBehaviour
         try
         {
         inputActions = new PlayerInputActions();
-            Debug.Log("PlayerInputActions initialized successfully");
         }
         catch (System.Exception e)
         {
@@ -276,10 +275,8 @@ public class PlayerController : MonoBehaviour
     // YENİ METOD: Manuel aim kontrolü
     void HandleAiming()
     {
-        // Sağ tık durumunu kontrol et
         bool currentlyAiming = Mouse.current.rightButton.isPressed;
         
-        // Durum değişti mi?
         if (currentlyAiming != wasAiming)
         {
             isAiming = currentlyAiming;
@@ -451,22 +448,18 @@ public class PlayerController : MonoBehaviour
     {
         if (cameraSwitcher != null && cameraSwitcher.currentMode == CameraSwitcher.CameraMode.FPS)
         {
-            // Rastgele horizontal recoil
             float randomHorizontal = Random.Range(-horizontalRecoil, horizontalRecoil);
             
-            // YENİ: Recoil değerlerini çok daha büyük yap
             Vector2 newRecoil = new Vector2(
-                randomHorizontal * horizontalRecoilMultiplier * 50f, // 50f çarpanı
-                verticalRecoil * recoilMultiplier * 100f // 100f çarpanı
+                randomHorizontal * horizontalRecoilMultiplier * 50f,
+                verticalRecoil * recoilMultiplier * 100f
             );
             
-            // Recoil'i başlat
             recoilStartPosition = currentRecoil;
             targetRecoil = currentRecoil + newRecoil;
             targetRecoil.y = Mathf.Clamp(targetRecoil.y, 0f, maxRecoilY);
             targetRecoil.x = Mathf.Clamp(targetRecoil.x, -maxRecoilX, maxRecoilX);
             
-            // Timer'ı sıfırla ve recovery fazını kapat
             recoilTimer = 0f;
             isRecoiling = true;
             isInRecoveryPhase = false;
@@ -482,11 +475,9 @@ public class PlayerController : MonoBehaviour
             
             if (!isInRecoveryPhase)
             {
-                // İlk recoil fazı - yukarı gidiyor
                 float normalizedTime = recoilTimer / recoilDuration;
                 if (normalizedTime >= 1f)
                 {
-                    // İlk recoil bitti, recovery fazına geç
                     isInRecoveryPhase = true;
                     recoilStartPosition = currentRecoil;
                     recoilTimer = 0f;
@@ -499,12 +490,11 @@ public class PlayerController : MonoBehaviour
             }
             else
             {
-                // Recovery fazı - negatif recoil uygula
+                // Negatif recoil
                 float recoveryTime = recoilTimer / (recoilDuration * 2f);
                 Vector2 oldRecoil = currentRecoil;
                 
-                // YENİ: Negatif recoil değerini ayarlanabilir yap
-                Vector2 negativeRecoil = new Vector2(0f, -targetRecoil.y * recoveryStrength); // 0.3f = recovery gücü
+                Vector2 negativeRecoil = new Vector2(0f, -targetRecoil.y * recoveryStrength);
                 currentRecoil = Vector2.Lerp(recoilStartPosition, negativeRecoil, recoveryTime);
                 
                 if (recoveryTime >= 1f)
@@ -807,23 +797,22 @@ public class PlayerController : MonoBehaviour
     // Public getters
     public bool IsAiming() => isAiming;
     public bool IsAimingFPS() => isAimingFPS;
-    public bool IsCrouching() => isCrouching; // YENİ: Eğilme durumu getter'ı
-    public bool IsSliding() => isSliding; // YENİ: Slide durumu getter'ı
+    public bool IsCrouching() => isCrouching;
+    public bool IsSliding() => isSliding;
 
     void UpdateAnimations()
     {
         if (characterAnimator == null) return;
         
-        // Hareket hızını hesapla
+        // Hareket hızı
         float speed = new Vector2(moveInput.x, moveInput.y).magnitude;
         
-        // Sadece mevcut animasyonlar için parametreler
+        // Animasyonlar
         characterAnimator.SetFloat("Speed", speed);
         characterAnimator.SetBool("IsRunning", isRunning);
         characterAnimator.SetBool("IsGrounded", controller.isGrounded);
         characterAnimator.SetBool("IsJumping", !controller.isGrounded && velocity.y > 0);
         
-        // Debug için log
         Debug.Log($"Speed: {speed}, Running: {isRunning}, Grounded: {controller.isGrounded}, Jumping: {!controller.isGrounded && velocity.y > 0}");
     }
 } 

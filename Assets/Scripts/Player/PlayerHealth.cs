@@ -61,7 +61,6 @@ public class PlayerHealth : MonoBehaviour
         Debug.Log($"Player healed {amount}! Health: {currentHealth}/{maxHealth}");
     }
     
-    // IEnumerator RegenerateHealth() // TÜM FONKSİYONU SİL
     
     void Die()
     {

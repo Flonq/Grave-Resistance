@@ -104,7 +104,6 @@ public class CharacterAnimator : MonoBehaviour
 
     void HandleFullBodyRotation()
     {
-        // Input System kullanarak mouse input'u al
         Vector2 mouseInput = Vector2.zero;
         
         if (UnityEngine.InputSystem.Mouse.current != null)
@@ -112,7 +111,7 @@ public class CharacterAnimator : MonoBehaviour
             mouseInput = UnityEngine.InputSystem.Mouse.current.delta.ReadValue();
         }
         
-        // Üst gövde rotasyonu (sağa-sola)
+        // Üst gövde rotasyonu
         if (mouseInput.x != 0)
         {
             currentUpperBodyRotation += mouseInput.x * upperBodyRotationSpeed * Time.deltaTime;
@@ -120,18 +119,17 @@ public class CharacterAnimator : MonoBehaviour
         }
         else
         {
-            // Yavaşça sıfıra dön
             currentUpperBodyRotation = Mathf.Lerp(currentUpperBodyRotation, 0, Time.deltaTime * returnSpeed);
         }
         
-        // Baş rotasyonu (yukarı-aşağı)
+        // Baş rotasyonu
         if (mouseInput.y != 0)
         {
             currentHeadRotation -= mouseInput.y * headRotationSpeed * Time.deltaTime;
             currentHeadRotation = Mathf.Clamp(currentHeadRotation, -maxHeadAngle, maxHeadAngle);
         }
         
-        // Rotasyonları smooth olarak uygula
+        // Smooth hareket
         ApplyRotations();
     }
     
